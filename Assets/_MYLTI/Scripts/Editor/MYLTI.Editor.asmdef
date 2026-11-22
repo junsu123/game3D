@@ -1,0 +1,27 @@
+{
+    "name": "MYLTI.Editor",
+    "rootNamespace": "Mylti.EditorTools",
+    "references": [
+        "MYLTI.Domain",
+        "MYLTI.Runtime",
+        "Unity.Recorder",
+        "Unity.Recorder.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.recorder",
+            "expression": "4.0.0",
+            "define": "MYLTI_HAS_RECORDER"
+        }
+    ],
+    "noEngineReferences": false
+}
