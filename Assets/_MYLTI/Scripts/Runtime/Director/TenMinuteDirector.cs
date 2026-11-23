@@ -255,6 +255,7 @@ namespace Mylti
                 if (abortRequested) yield break;
                 if (!Session.Vehicles.TryGetValue(e.VehicleId, out var vc)) continue;
                 var d = vc.Def;
+                Log.Log("IntroVehicle", 0, 0, e.VehicleId, d.DisplayName(Lang));
                 Cam.LineupTarget = vc.transform;
                 Cam.Forced = Shot.Lineup;
                 Cam.Snap();
@@ -271,6 +272,7 @@ namespace Mylti
             string rules = L($"{rounds - 1} rounds + a final (worth double) · {RunPlanner.RuleText(r1.Rule, r1, Lang)} · {Plan.Concept.Stakes}",
                              $"{rounds - 1} vòng + chung kết (điểm gấp đôi) · {RunPlanner.RuleText(r1.Rule, r1, Lang)} · {Plan.Concept.Stakes}");
             Overlay.ShowCard(L("THE CHALLENGE", "THỬ THÁCH"), Plan.Concept.ViewerPromise, rules);
+            Log.Log("RulesShown", 0, 0, null, rules);
             double start = Clock.Time, endT = ph.PlannedEnd;
             while (!abortRequested && Clock.Time < endT)
             {

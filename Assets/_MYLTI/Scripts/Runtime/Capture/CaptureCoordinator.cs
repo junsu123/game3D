@@ -28,6 +28,7 @@ namespace Mylti
     public sealed class CaptureCoordinator : MonoBehaviour
     {
         public AppSettings Settings;
+        public BuiltInRecorder Recorder;
         public CaptureInfo Info { get; private set; } = new CaptureInfo();
         public string LastMessage => Info?.Message;
         public DateTime RecordingStartedUtc { get; private set; }
@@ -47,7 +48,8 @@ namespace Mylti
             Info.Interrupted = false;
             Info.InterruptReason = null;
             Info.Video = null;
-            Info.ExpectedPath = Settings.Backend == CaptureBackend.UnityRecorder ? Path.Combine(runFolder, "video", "mylti_" + run.RunId) : null;
+            Info.ExpectedPath = Settings.Backend == CaptureBackend.UnityRecorder ? Path.Combine(runFolder, "video", "mylti_" + run.RunId)
+                              : Settings.Backend == CaptureBackend.BuiltInFfmpeg ? Path.Combine(runFolder, "video", "gameplay_silent.mp4") : null;
             if (Info.ExpectedPath != null) Directory.CreateDirectory(Path.GetDirectoryName(Info.ExpectedPath));
         }
 
@@ -61,6 +63,19 @@ namespace Mylti
                     Info.Status = CaptureStatus.CapturePending;
                     Info.Message = "No recorder selected — simulation only. Content pack will be a draft.";
                     return true;
+
+                case CaptureBackend.BuiltInFfmpeg:
+                {
+                    if (Recorder == null || !Recorder.StartRecording(Info.ExpectedPath, Info.Fps))
+                    {
+                        Info.Status = CaptureStatus.Failed;
+                        Info.Message = Recorder?.Error ?? "Built-in recorder missing.";
+                        return false;
+                    }
+                    Info.Status = CaptureStatus.Recording;
+                    Info.Message = $"Recording 1920×1080 @ {Info.Fps} fps with the built-in recorder (FFmpeg). Picture only — UI is never recorded.";
+                    return true;
+                }
 
                 case CaptureBackend.UnityRecorder:
                 {
@@ -119,6 +134,12 @@ namespace Mylti
                 case CaptureBackend.None:
                     Info.Status = CaptureStatus.CapturePending;
                     return;
+                case CaptureBackend.BuiltInFfmpeg:
+                    path = Recorder != null ? Recorder.StopRecording() : null;
+                    Info.Status = CaptureStatus.Stopped;
+                    if (path == null) Info.Message = "Built-in recorder failed: " + Recorder?.Error;
+                    else if (Recorder.FramesRepeated > 0) Info.Message = $"{Recorder.FramesRepeated} frame(s) repeated because GPU readback failed.";
+                    break;
                 case CaptureBackend.UnityRecorder:
                     path = RecorderBridgeRegistry.Instance?.Stop();
                     Info.Status = CaptureStatus.Stopped;

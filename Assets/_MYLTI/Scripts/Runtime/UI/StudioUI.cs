@@ -29,7 +29,7 @@ namespace Mylti
 
         static readonly string[] Tabs =
         {
-            "Thử thách", "Xe", "Camera", "Preset", "Concept Lab", "10-Min Director", "Video Capture", "YouTube Pack", "Quality"
+            "▶ Auto Episode", "Thử thách", "Xe", "Camera", "Preset", "Concept Lab", "10-Min Director", "Video Capture", "YouTube Pack", "Quality"
         };
 
         void Start()
@@ -66,7 +66,7 @@ namespace Mylti
 
             DrawTopBar(W);
             if (app.HudVisible) DrawHud(W, H);
-            bool wide = tab == 7 || tab == 8;
+            bool wide = tab == 0 || tab == 8 || tab == 9;
             float leftW = wide ? Mathf.Min(W - 40f, 980f) : 440f;
             var left = new Rect(10, 46, leftW, H - 150);
             Fill(left, new Color(0.06f, 0.07f, 0.09f, 0.88f));
@@ -76,15 +76,16 @@ namespace Mylti
             {
                 switch (tab)
                 {
-                    case 0: ChallengeTab(); break;
-                    case 1: VehicleTab(); break;
-                    case 2: CameraTab(); break;
-                    case 3: PresetTab(); break;
-                    case 4: ConceptTab(); break;
-                    case 5: DirectorTab(); break;
-                    case 6: CaptureTab(); break;
-                    case 7: PackTab(); break;
-                    case 8: QualityTab(); break;
+                    case 0: AutoTab(); break;
+                    case 1: ChallengeTab(); break;
+                    case 2: VehicleTab(); break;
+                    case 3: CameraTab(); break;
+                    case 4: PresetTab(); break;
+                    case 5: ConceptTab(); break;
+                    case 6: DirectorTab(); break;
+                    case 7: CaptureTab(); break;
+                    case 8: PackTab(); break;
+                    case 9: QualityTab(); break;
                 }
             }
             catch (Exception e) when (!(e is ExitGUIException))

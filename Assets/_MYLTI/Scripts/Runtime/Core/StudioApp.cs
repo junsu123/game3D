@@ -29,6 +29,10 @@ namespace Mylti
         public HighlightFrameCapture Frames { get; private set; }
         public ShowOverlay Overlay { get; private set; }
         public TenMinuteDirector Director { get; private set; }
+        public FfmpegTool Ffmpeg { get; private set; }
+        public BuiltInRecorder Recorder { get; private set; }
+        public EpisodeProducer Producer { get; private set; }
+        public EpisodeLog Episodes { get; private set; }
 
         // data
         public string DataRoot { get; private set; }
@@ -67,6 +71,7 @@ namespace Mylti
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
             Application.runInBackground = true;
             Time.fixedDeltaTime = 0.02f; // spec §10 baseline; profile before changing
 
@@ -102,8 +107,15 @@ namespace Mylti
 
             Replay = gameObject.AddComponent<ReplaySystem>();
             Replay.Clock = Clock;
+            Ffmpeg = new FfmpegTool(Path.Combine(DataRoot, "ffmpeg"), Settings.FfmpegPath);
+            Recorder = gameObject.AddComponent<BuiltInRecorder>();
+            Recorder.Cam = Cam.GetComponent<Camera>();
+            Recorder.Ffmpeg = Ffmpeg;
+            Recorder.FlipVertical = Settings.FlipVertical;
+            Episodes = new EpisodeLog(Path.Combine(DataRoot, "episodes_log.json"));
             Capture = gameObject.AddComponent<CaptureCoordinator>();
             Capture.Settings = Settings;
+            Capture.Recorder = Recorder;
             Frames = gameObject.AddComponent<HighlightFrameCapture>();
             Overlay = gameObject.AddComponent<ShowOverlay>();
             Director = gameObject.AddComponent<TenMinuteDirector>();
@@ -111,6 +123,10 @@ namespace Mylti
             Director.Replay = Replay; Director.Capture = Capture; Director.Frames = Frames; Director.Overlay = Overlay;
             Director.History = History; Director.Settings = Settings; Director.RunsRoot = RunsRoot;
             Director.StateChanged += OnDirectorState;
+            Producer = gameObject.AddComponent<EpisodeProducer>();
+            Producer.App = this;
+            Producer.Ffmpeg = Ffmpeg;
+            Producer.Episodes = Episodes;
             gameObject.AddComponent<StudioUI>();
 
             ApplyQuality(Settings.Quality);
@@ -124,7 +140,9 @@ namespace Mylti
             Session.EnsureVehicles(Config.Entrants);
             Session.LineUp(Config.Entrants);
             Cam.Requested = Shot.Auto;
-            Msg("Ready. Sandbox: press Start. 10-minute episode: Concept Lab → Generate Plan → Start & Capture.");
+            Overlay.CardsEnabled = Settings.ShowCardsInVideo;
+            Overlay.ScoreboardEnabled = Settings.ShowScoreboardInVideo;
+            Msg("Sẵn sàng. Bấm ▶ AUTO EPISODE (tab đầu tiên) để Claude viết kịch bản, tự quay và xuất video 10:00 có lời bình.");
         }
 
         void OnDestroy()
@@ -153,9 +171,15 @@ namespace Mylti
             if (idx >= 0 && idx < names.Length) QualitySettings.SetQualityLevel(idx, true);
         }
 
+        readonly System.Collections.Concurrent.ConcurrentQueue<string> pendingMessages = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        int mainThreadId;
+
+        /// <summary>Thread-safe: background tasks (Claude, TTS, downloads) may call this.</summary>
         public void Msg(string m)
         {
-            Messages.Add(DateTime.Now.ToString("HH:mm:ss") + "  " + m);
+            string line = DateTime.Now.ToString("HH:mm:ss") + "  " + m;
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId != mainThreadId) { pendingMessages.Enqueue(line); return; }
+            Messages.Add(line);
             if (Messages.Count > 40) Messages.RemoveAt(0);
             Debug.Log("[MYLTI] " + m);
         }
@@ -168,6 +192,12 @@ namespace Mylti
 
         void Update()
         {
+            while (pendingMessages.TryDequeue(out var queued))
+            {
+                Messages.Add(queued);
+                if (Messages.Count > 40) Messages.RemoveAt(0);
+                Debug.Log("[MYLTI] " + queued);
+            }
             if (InputReader.Pressed(GameKey.ToggleCreator)) Mode = Mode == UiMode.Creator ? UiMode.Capture : UiMode.Creator;
             if (InputReader.Pressed(GameKey.ToggleHud)) HudVisible = !HudVisible;
             if (InputReader.Pressed(GameKey.Pause) && Director.State == ProjectState.Recording) Director.TogglePause();

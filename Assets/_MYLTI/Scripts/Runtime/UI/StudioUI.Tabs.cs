@@ -243,7 +243,7 @@ namespace Mylti
             }
             if (app.SelectedConcept >= 0)
             {
-                if (GUILayout.Button("Dùng concept này → Generate Run Plan", GUILayout.Height(30))) { app.GeneratePlan(); tab = 5; }
+                if (GUILayout.Button("Dùng concept này → Generate Run Plan", GUILayout.Height(30))) { app.GeneratePlan(); tab = 6; }
             }
         }
 

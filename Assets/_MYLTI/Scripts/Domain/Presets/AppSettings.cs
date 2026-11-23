@@ -7,15 +7,33 @@ namespace Mylti.Domain
     /// <summary>Per-user app settings (stored next to presets, never inside the project/repo).</summary>
     public sealed class AppSettings : IJsonWritable
     {
-        public CaptureBackend Backend = CaptureBackend.None;
+        public CaptureBackend Backend = CaptureBackend.BuiltInFfmpeg;
+        public string FfmpegPath = "";
+        public bool FlipVertical = true;
+
+        // Claude (script + commentary). Billed by Anthropic per token; key stays on this PC.
+        public bool UseClaude = true;
+        public string ClaudeApiKey = "";
+        public string ClaudeModel = ClaudeClient.DefaultModel;
+        public bool LetClaudePickVehicles = true;
+        public bool RememberApiKeys = true;
+
+        // English voice-over
+        public TtsProviderKind TtsProvider = TtsProviderKind.WindowsVoice;
+        public string TtsVoice = "";
+        public string GoogleTtsKey = "";
+        public string ElevenLabsKey = "";
+        public string ElevenLabsVoiceId = "";
+        public bool NarrationEnabled = true;
+        public bool SoundDesignEnabled = true;
         public string ObsHost = "127.0.0.1";
         public int ObsPort = 4455;
         public bool RememberObsPassword = false;
         public string ObsPassword = "";           // only persisted when RememberObsPassword = true
         public string ObsRecordingFolder = "";    // for ObsManual auto-detection
         public int CaptureFps = 30;
-        public bool ShowScoreboardInVideo = true;
-        public bool ShowCardsInVideo = true;
+        public bool ShowScoreboardInVideo = false;   // clean picture: no numbers on screen
+        public bool ShowCardsInVideo = false;
         public bool EnableAudio = true;
         public bool DraftDuration = false;        // 5:00 test mode, never for final delivery
         public ContentLanguage Language = ContentLanguage.en;
@@ -30,6 +48,14 @@ namespace Mylti.Domain
                 .Prop("showScoreboardInVideo", ShowScoreboardInVideo).Prop("showCardsInVideo", ShowCardsInVideo)
                 .Prop("enableAudio", EnableAudio).Prop("draftDuration", DraftDuration)
                 .Prop("language", Language.ToString()).Prop("quality", Quality)
+                .Prop("ffmpegPath", FfmpegPath).Prop("flipVertical", FlipVertical)
+                .Prop("useClaude", UseClaude).Prop("claudeModel", ClaudeModel).Prop("letClaudePickVehicles", LetClaudePickVehicles)
+                .Prop("rememberApiKeys", RememberApiKeys)
+                .Prop("claudeApiKey", RememberApiKeys ? ClaudeApiKey : "")
+                .Prop("ttsProvider", TtsProvider.ToString()).Prop("ttsVoice", TtsVoice)
+                .Prop("googleTtsKey", RememberApiKeys ? GoogleTtsKey : "")
+                .Prop("elevenLabsKey", RememberApiKeys ? ElevenLabsKey : "").Prop("elevenLabsVoiceId", ElevenLabsVoiceId)
+                .Prop("narrationEnabled", NarrationEnabled).Prop("soundDesignEnabled", SoundDesignEnabled)
                 .EndObject();
         }
 
@@ -48,12 +74,26 @@ namespace Mylti.Domain
                 s.ObsPassword = s.RememberObsPassword ? MiniJson.GetString(o, "obsPassword", "") : "";
                 s.ObsRecordingFolder = MiniJson.GetString(o, "obsRecordingFolder", "");
                 s.CaptureFps = MiniJson.GetInt(o, "captureFps", 30) == 60 ? 60 : 30;
-                s.ShowScoreboardInVideo = MiniJson.GetBool(o, "showScoreboardInVideo", true);
-                s.ShowCardsInVideo = MiniJson.GetBool(o, "showCardsInVideo", true);
                 s.EnableAudio = MiniJson.GetBool(o, "enableAudio", true);
                 s.DraftDuration = MiniJson.GetBool(o, "draftDuration", false);
                 s.Language = ScenarioConfig.ParseEnum(MiniJson.GetString(o, "language"), s.Language);
                 s.Quality = MiniJson.GetString(o, "quality", "High");
+                s.ShowCardsInVideo = MiniJson.GetBool(o, "showCardsInVideo", false);
+                s.ShowScoreboardInVideo = MiniJson.GetBool(o, "showScoreboardInVideo", false);
+                s.FfmpegPath = MiniJson.GetString(o, "ffmpegPath", "");
+                s.FlipVertical = MiniJson.GetBool(o, "flipVertical", true);
+                s.UseClaude = MiniJson.GetBool(o, "useClaude", true);
+                s.ClaudeModel = MiniJson.GetString(o, "claudeModel", ClaudeClient.DefaultModel);
+                s.LetClaudePickVehicles = MiniJson.GetBool(o, "letClaudePickVehicles", true);
+                s.RememberApiKeys = MiniJson.GetBool(o, "rememberApiKeys", true);
+                s.ClaudeApiKey = MiniJson.GetString(o, "claudeApiKey", "");
+                s.TtsProvider = ScenarioConfig.ParseEnum(MiniJson.GetString(o, "ttsProvider"), TtsProviderKind.WindowsVoice);
+                s.TtsVoice = MiniJson.GetString(o, "ttsVoice", "");
+                s.GoogleTtsKey = MiniJson.GetString(o, "googleTtsKey", "");
+                s.ElevenLabsKey = MiniJson.GetString(o, "elevenLabsKey", "");
+                s.ElevenLabsVoiceId = MiniJson.GetString(o, "elevenLabsVoiceId", "");
+                s.NarrationEnabled = MiniJson.GetBool(o, "narrationEnabled", true);
+                s.SoundDesignEnabled = MiniJson.GetBool(o, "soundDesignEnabled", true);
             }
             catch (Exception e)
             {

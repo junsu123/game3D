@@ -62,6 +62,34 @@ namespace Mylti
             recordingItems = null;
         }
 
+        /// <summary>Vehicle speed over program time for every live take (drives the offline engine sound).</summary>
+        public List<Mylti.Domain.SpeedTrack> ExportSpeedTracks()
+        {
+            var list = new List<Mylti.Domain.SpeedTrack>();
+            foreach (var take in takes.Values)
+                foreach (var kv in take.Tracks)
+                {
+                    var def = Mylti.Domain.VehicleCatalog.Find(kv.Key);
+                    if (def == null || kv.Value.Count < 2) continue;
+                    var st = new Mylti.Domain.SpeedTrack
+                    {
+                        VehicleId = def.Id,
+                        TopSpeedMs = def.TopSpeedKmh / 3.6f,
+                        BasePitch = def.BodyStyle == "truck" ? 0.55f : def.BodyStyle == "suv" ? 0.75f : 0.95f
+                    };
+                    var smp = kv.Value;
+                    for (int i = 1; i < smp.Count; i++)
+                    {
+                        double dt = smp[i].T - smp[i - 1].T;
+                        if (dt <= 1e-4) continue;
+                        st.Times.Add(smp[i].T);
+                        st.Speeds.Add((float)((smp[i].P - smp[i - 1].P).magnitude / dt));
+                    }
+                    if (st.Times.Count >= 2) list.Add(st);
+                }
+            return list;
+        }
+
         public Take FindTakeForAttempt(string attemptId)
             => attemptId != null && attemptToTake.TryGetValue(attemptId, out var id) && takes.TryGetValue(id, out var t) ? t : null;
 

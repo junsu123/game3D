@@ -19,7 +19,7 @@ namespace Mylti.Domain
         static string L(ContentLanguage lang, string en, string vi) => lang == ContentLanguage.vi ? vi : en;
 
         public static RunPlan CreatePlan(ConceptBrief concept, IList<Entrant> entrants, int seed,
-            double targetSeconds, ContentLanguage lang, string difficulty, out List<string> warnings)
+            double targetSeconds, ContentLanguage lang, string difficulty, out List<string> warnings, IList<RoundSpec> customRounds = null)
         {
             warnings = new List<string>();
             if (entrants == null || entrants.Count == 0) throw new ArgumentException("No vehicles");
@@ -38,7 +38,10 @@ namespace Mylti.Domain
             };
             for (int i = 0; i < plan.Entrants.Count; i++) plan.Entrants[i].Lane = i;
 
-            var rounds = BuildRounds(concept.SeriesId, concept.TwistKind, plan.Entrants, difficulty, targetSeconds, lang);
+            var rounds = customRounds != null && customRounds.Count == 6
+                ? customRounds.Select(r => r.Clone()).ToList()
+                : BuildRounds(concept.SeriesId, concept.TwistKind, plan.Entrants, difficulty, targetSeconds, lang);
+            if (customRounds != null && customRounds.Count != 6) warnings.Add("Custom script must have exactly 6 rounds — using the built-in progression.");
             double scale = targetSeconds / 600.0;
             double[] budget = ReferenceBudget.Select(b => b * scale).ToArray();
             int n = plan.Entrants.Count;

@@ -4,10 +4,27 @@ Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:
 
 > **Trạng thái kiểm thử (trung thực):**
 > - ✅ Toàn bộ 40 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder.
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **19/19 test** chạy đạt bằng .NET 8: planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
-> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật** (môi trường làm việc là Linux, không có Unity). Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **27/27 test** chạy đạt bằng .NET 8 (thêm: lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật** (môi trường làm việc là Linux, không có Unity). Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
+
+## ▶ Auto Episode — một nút ra video hoàn chỉnh
+
+Tab đầu tiên **▶ Auto Episode** → bấm **AUTO EPISODE**:
+
+1. **FFmpeg**: tự tải một lần (~150 MB, từ github.com/BtbN/FFmpeg-Builds) vào thư mục dữ liệu của app.
+2. **Kịch bản**: Claude viết concept + 6 vòng (5 vòng tăng dần + chung kết). Lịch sử các tập trước được gửi kèm để **không trùng**; nếu quá giống (> 85 %) app yêu cầu viết lại. Mọi giá trị được kiểm tra/giới hạn. Không có key → bộ viết offline xoay vòng series × twist × đội hình chưa dùng.
+3. **Tự quay**: camera render 1920×1080 vào RenderTexture → FFmpeg (H.264). Khoá `Time.captureFramerate` = 30 nên video đúng từng khung (10:00 = 18 000 khung) kể cả máy yếu. **Chỉ hình 3D — không chữ, không thông số, không UI** (bảng điều khiển F1 không bao giờ vào video).
+4. **Lời bình tiếng Anh**: sau khi quay, Claude viết từng câu cho từng khoảnh khắc dựa trên sự kiện THẬT (cất cánh, tiếp đất, lật, kết quả vòng). Mỗi câu bị kiểm tra: không tiết lộ trước kết quả, không số liệu bịa, không nhãn hiệu, đúng độ dài khung thời gian; câu sai → thay bằng mẫu offline.
+5. **Giọng đọc**: Windows (miễn phí, offline, mặc định) · Google Cloud TTS (hạn mức miễn phí hằng tháng, cần key) · ElevenLabs (giọng hay nhất; gói Free không cho dùng thương mại). Lỗi/hết hạn mức → tự chuyển giọng Windows.
+6. **Âm thanh**: dựng offline trên đúng timeline: lời bình + tiếng động cơ (theo tốc độ thật), gió khi bay, va chạm, nền nhẹ; tự giảm nhạc nền khi có lời.
+7. **MP4 cuối** `Runs/<runId>/FINAL_<tiêu-đề>.mp4` (H.264 + AAC) — được kiểm tra thời lượng thật.
+8. **Kèm theo**: 5 tiêu đề, mô tả SEO có chapters, `captions_en.srt` (phụ đề tải lên YouTube, không in vào hình), `thumbnail_1280x720.jpg` (từ khung hình thật), `narration_script.json`.
+
+**Chi phí & điều kiện:** Claude API tính phí theo token (tách biệt gói Claude.ai) — lấy key tại console.anthropic.com. Giọng Windows và bộ viết offline thì miễn phí hoàn toàn. Trước khi đăng hãy xem lại video: app không thể tự đảm bảo nội dung hợp chính sách YouTube.
+
+Lần đầu nên bấm **Quay thử 3 giây** để kiểm tra hình không bị lộn ngược (nếu ngược, đổi ô *Lật dọc*).
 
 ## 1. Cài đặt trên Windows 11 (3 bước)
 

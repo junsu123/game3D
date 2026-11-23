@@ -31,6 +31,7 @@ namespace Mylti.Domain
     public enum CaptureBackend
     {
         None,            // simulation only — content pack will be a draft
+        BuiltInFfmpeg,   // built-in recorder: camera → 1080p frames → FFmpeg (Editor and Windows build)
         UnityRecorder,   // Editor only (com.unity.recorder installed)
         ObsWebSocket,    // OBS 28+ built-in WebSocket server (opt-in)
         ObsManual        // user starts/stops OBS by hand, then points to the file
