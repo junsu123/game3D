@@ -63,6 +63,26 @@ namespace Mylti.Tests
             }
         }
 
+        [Test]
+        public void Legends_AreOwnGameFighterDesigns_EachWithTheirGear()
+        {
+            var all = Enumerable.Range(0, HumanMesh.DesignCount).Select(HumanMesh.DesignName).ToList();
+            Assert.AreEqual(HumanMesh.Heroes.Length + HumanMesh.Legends.Length, all.Count);
+            Assert.AreEqual(all.Count, all.Distinct().Count(), "every design has its own name");
+            foreach (var n in all) Assert.IsNull(ClaimChecker.FindBlockedBrand(n), n);
+            for (int i = 0; i < HumanMesh.Legends.Length; i++)
+            {
+                var d = HumanMesh.Legends[i];
+                var m = HumanMesh.Build(700 + i, HumanMesh.Heroes.Length + i, false);
+                foreach (int piece in new[] { d.Hood, d.FaceMask, d.Hat, d.Helmet, d.Pauldrons, d.Gauntlets, d.Mohawk, d.Goggles, d.Coat, d.Sash, d.Top, d.Boots })
+                    if (piece >= 0) Assert.IsTrue(m.Cells.Contains(96 + piece), d.Name + " wears colour " + piece);
+                if (d.Helmet >= 0 || d.Hood >= 0) Assert.IsFalse(m.Cells.Any(c => c >= 48 && c < 48 + HumanMesh.Hair.Length && c != 48), d.Name + ": no loose hair under a helmet / hood");
+                if (d.Hat >= 0) Assert.Greater(m.Vertices.Max(v => Math.Abs(v.X)), 0.1f, "brim sticks out");
+            }
+            // the costume list wraps: design index past the end is still a valid costume
+            Assert.IsTrue(HumanMesh.Build(1, HumanMesh.DesignCount + 2, true).Vertices.Length > 0);
+        }
+
         static V3 HandCentre(HumanMeshData m, V3[] posed, int fore)
         {
             var idx = Enumerable.Range(0, m.Vertices.Length).Where(i => m.Bones[i] == fore && m.Vertices[i].Y < 0.47f * m.Height).ToList();

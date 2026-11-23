@@ -3,7 +3,7 @@
 Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .NET) · 🎮 phải kiểm trong Unity
 
 ## A. Tự động (Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All)
-✅ 64 test đã chạy đạt bằng .NET 8 ngoài Unity; ☐ chạy lại trong Unity Test Runner.
+✅ 65 test đã chạy đạt bằng .NET 8 ngoài Unity; ☐ chạy lại trong Unity Test Runner.
 
 ## B. Mốc A — vertical slice 🎮
 - ☐ Mở dự án: Console **không lỗi compile** (cảnh báo “reference to non-existent assembly” khi chưa cài Recorder là bình thường).
@@ -62,3 +62,4 @@ Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .N
 - [ ] FPS: Quality Medium vẫn ≥ 60 khi quay; máy yếu kéo “Số khán giả” xuống 0.5.
 - [ ] Video cuối: nghe được rì rầm, reo hò lúc bay, “ồ” lúc va chạm, vỗ tay lúc có kết quả; nhỏ lại khi có lời bình.
 - [ ] (Tuỳ chọn) Thả FBX Mixamo (nhân vật + Idle/Clapping/Cheering) vào Resources/Crowd: dòng trạng thái báo số nhân vật/động tác; hàng đầu dùng nhân vật đó, chuyển động mượt giữa đứng yên ↔ vỗ tay ↔ reo hò.
+- [ ] Có cả MYLTI Legends (mũ trùm, khăn che mặt, mũ rộng vành, mũ bảo hiểm, kính bảo hộ, áo khoác dài): áo khoác/khăn không xuyên qua tay chân quá rõ khi vỗ tay/nhảy.

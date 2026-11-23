@@ -4,7 +4,7 @@ Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:
 
 > **Trạng thái kiểm thử (trung thực):**
 > - ✅ Toàn bộ 76 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder, nhánh nạp mẫu xe .glb (glTFast) và khán giả có khung xương (SkinnedMeshRenderer, Playables).
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **64/64 test** chạy đạt bằng .NET 8 (thêm: khán giả — lưới người hợp lệ, đội siêu anh hùng tự sáng tạo, tư thế vỗ tay/giơ tay, cảm xúc đám đông theo sự kiện, tiếng reo hò/vỗ tay; vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **65/65 test** chạy đạt bằng .NET 8 (thêm: khán giả — lưới người hợp lệ, đội siêu anh hùng tự sáng tạo, tư thế vỗ tay/giơ tay, cảm xúc đám đông theo sự kiện, tiếng reo hò/vỗ tay; vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
 > - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows, chưa tải video thật lên YouTube, chưa nạp thử mẫu xe .glb thật, chưa xem móp méo/HDRI/khán giả chuyển động trên màn hình** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt; hình khán giả/siêu anh hùng đã được dựng thử bằng trình vẽ phần mềm để kiểm tra dáng và tư thế. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
@@ -83,6 +83,7 @@ Tab **📅 Lịch & Đăng**:
 ## 🦸 Khán giả hoạt hình + đội siêu anh hùng MYLTI Squad
 
 ![MYLTI Squad](docs/images/mylti_squad.png)
+![MYLTI Legends](docs/images/mylti_legends.png)
 
 - **Khán đài 5 bậc có mái** dọc đường băng, **đám đông đứng sau hàng lốp** ở vùng xe đáp, **hàng rào khán giả** cạnh tường va chạm / cần cẩu thả rơi. Khoảng 1.100 người (chỉnh được), mỗi người là một nhân vật 3D có khung xương: tay, chân, đầu cử động thật.
 - **Phản ứng theo đúng sự kiện thật** của lượt chạy: xe vào dốc → xôn xao; cất cánh → giơ tay reo hò, nhảy lên, đấm tay; đáp/đâm → “ồ!”; có kết quả vòng → **vỗ tay rào rào**; bảng xếp hạng cuối → vỗ tay lâu. Mọi người **quay đầu nhìn theo xe**, người đứng xa phản ứng chậm hơn một chút.
@@ -90,6 +91,8 @@ Tab **📅 Lịch & Đăng**:
 - **Tiếng khán giả trong video**: tiếng rì rầm, reo hò (“aaah”), vỗ tay, “ồ” khi va chạm — tổng hợp từ đúng đường cong cảm xúc đã điều khiển khán giả trên hình, nên **tiếng khớp với hình**. Tự nhỏ đi khi có lời bình.
 - **Muốn người giống thật hơn**: tải nhân vật + động tác (Idle, Clapping, Cheering…) miễn phí từ Mixamo dạng FBX, bỏ vào `Assets/_MYLTI/Resources/Crowd` (xem `README_Crowd.txt` trong đó) → hàng đầu tự dùng, phía sau vẫn là khán giả tự tạo cho nhẹ máy.
 - ⚠️ Không dùng mô hình/fan-art của siêu anh hùng có bản quyền (kể cả “đổi màu”) — vẫn bị nhận ra → dễ dính Content ID / khiếu nại.
+- **MYLTI Legends** — 6 chiến binh **phong cách game bắn súng/hành động**, cũng do kênh tự sáng tạo: Ember Ronin (mũ trùm + khăn che mặt + giáp vai + khăn chéo), Volt Striker (tóc mohawk + kính bảo hộ + găng giáp, tay trần), Desert Drifter (mũ rộng vành + khăn che mặt + áo khoác dài), Steel Hornet (mũ bảo hiểm kín + kính chắn + giáp vai gai), Jade Warden (mũ trùm + áo khoác dài + giáp vai), Night Courier (kính bảo hộ + mặt nạ + áo khoác dài). Có cả phiên bản trẻ em.
+- Thanh *Tỉ lệ khán giả hoá trang* chia đều cho cả hai đội. Đây là khán giả ít đa giác nhìn từ xa — không đạt độ chi tiết như ảnh quảng cáo game; muốn cận cảnh đẹp như vậy cần mô hình 3D chất lượng cao có giấy phép thương mại (bỏ vào Resources/Crowd).
 - Nếu kênh nhắm tới trẻ em: bật **“Video dành cho trẻ em (Made for Kids)”** ở tab 📅 Lịch & Đăng (bạn tự khai báo theo luật COPPA).
 
 ## Đồ hoạ

@@ -48,7 +48,7 @@ namespace Mylti
         public static Variant GetHero(int i)
         {
             int perHero = 4; // 2 grown-ups + 2 kids per costume
-            while (heroes.Count < HumanMesh.Heroes.Length * perHero)
+            while (heroes.Count < HumanMesh.DesignCount * perHero)
             {
                 int n = heroes.Count;
                 heroes.Add(Convert(HumanMesh.Build(500 + n, n / perHero, n % perHero >= 2)));

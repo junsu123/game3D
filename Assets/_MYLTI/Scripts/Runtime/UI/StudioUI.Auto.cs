@@ -168,9 +168,9 @@ namespace Mylti
             {
                 float dens = Slider("Số khán giả (máy yếu → kéo nhỏ)", s.CrowdDensity, 0.3f, 1.5f, "0.0");
                 if (Mathf.Abs(dens - s.CrowdDensity) > 0.001f) { s.CrowdDensity = dens; CrowdDirector.Density = dens; }
-                float hs = Slider("Tỉ lệ khán giả mặc đồ siêu anh hùng MYLTI Squad", s.CrowdHeroShare, 0f, 1f, "0.00");
+                float hs = Slider("Tỉ lệ khán giả hoá trang (MYLTI Squad + MYLTI Legends)", s.CrowdHeroShare, 0f, 1f, "0.00");
                 if (Mathf.Abs(hs - s.CrowdHeroShare) > 0.001f) { s.CrowdHeroShare = hs; CrowdDirector.HeroShare = hs; }
-                GUILayout.Label("MYLTI Squad = 7 siêu anh hùng do kênh tự sáng tạo (Turbo Ranger, Nova Spark, Gear Guardian, Comet Kid, Rocket Rex, Pixel Knight, Aurora Dash) — không dựa trên nhân vật có bản quyền nào.", small);
+                GUILayout.Label("MYLTI Squad = 7 siêu anh hùng (Turbo Ranger, Nova Spark, Gear Guardian, Comet Kid, Rocket Rex, Pixel Knight, Aurora Dash). MYLTI Legends = 6 chiến binh phong cách game (Ember Ronin, Volt Striker, Desert Drifter, Steel Hornet, Jade Warden, Night Courier). Tất cả do kênh tự sáng tạo — không dựa trên nhân vật có bản quyền nào.", small);
                 s.CrowdVolume = Slider("Tiếng reo hò / vỗ tay trong video", s.CrowdVolume, 0f, 1f, "0.00");
                 GUILayout.BeginHorizontal();
                 if (app.Crowd != null) GUILayout.Label($"Đang có {app.Crowd.Count} khán giả ({app.Crowd.RealCount} nhân vật 3D riêng). Nhân vật riêng: {app.Crowd.RealCharactersSummary()}", small);
