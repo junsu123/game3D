@@ -15,7 +15,7 @@ Tab đầu tiên **▶ Auto Episode** → bấm **AUTO EPISODE**:
 
 1. **FFmpeg**: tự tải một lần (~150 MB, từ github.com/BtbN/FFmpeg-Builds) vào thư mục dữ liệu của app.
 2. **Kịch bản**: Claude viết concept + 6 vòng (5 vòng tăng dần + chung kết). Lịch sử các tập trước được gửi kèm để **không trùng**; nếu quá giống (> 85 %) app yêu cầu viết lại. Mọi giá trị được kiểm tra/giới hạn. Không có key → bộ viết offline xoay vòng series × twist × đội hình chưa dùng.
-3. **Tự quay**: camera render 1920×1080 vào RenderTexture → FFmpeg (H.264). Khoá `Time.captureFramerate` = 30 nên video đúng từng khung (10:00 = 18 000 khung) kể cả máy yếu. Không có UI/bảng điều khiển trong video (F1 không bao giờ vào video); chỉ có **tên xe + tốc độ km/h trên đầu xe** (vật thể 3D trong cảnh) — tắt được.
+3. **Tự quay**: camera render 1920×1080 vào RenderTexture → FFmpeg (H.264). Khoá `Time.captureFramerate` = 60 (mặc định, chọn được 30) nên video đúng từng khung (10:00 = 36 000 khung) kể cả máy yếu. Không có UI/bảng điều khiển trong video (F1 không bao giờ vào video); chỉ có **tên xe + tốc độ km/h trên đầu xe** (vật thể 3D trong cảnh) — tắt được.
 4. **Lời bình tiếng Anh**: sau khi quay, Claude viết từng câu cho từng khoảnh khắc dựa trên sự kiện THẬT (cất cánh, tiếp đất, lật, kết quả vòng). Mỗi câu bị kiểm tra: không tiết lộ trước kết quả, không số liệu bịa, không nhãn hiệu, đúng độ dài khung thời gian; câu sai → thay bằng mẫu offline.
 5. **Giọng đọc** (xem bảng bên dưới): mặc định **Kokoro** — miễn phí, chạy trên máy, dùng thương mại được. Lỗi/hết hạn mức → tự chuyển giọng Windows.
 6. **Âm thanh**: dựng offline trên đúng timeline: lời bình + tiếng động cơ (theo tốc độ thật), gió khi bay, va chạm, nền nhẹ; tự giảm nhạc nền khi có lời.
