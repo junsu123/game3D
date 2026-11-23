@@ -9,8 +9,11 @@ namespace Mylti
     /// </summary>
     public sealed class VfxDirector : MonoBehaviour
     {
+        public static VfxDirector Instance { get; private set; }
         public ChallengeSession Session;
-        ParticleSystem dust, sparks, debris;
+        ParticleSystem dust, sparks, debris, kick;
+
+        void Awake() { Instance = this; }
 
         public void Attach(EventLogger log)
         {
@@ -24,6 +27,7 @@ namespace Mylti
             dust = Make("VFX_Dust", sphere, MaterialFactory.Get(new Color(0.62f, 0.53f, 0.40f), 0.05f), 2.2f, 4f, 0.9f, 2.6f, -0.03f, 900);
             sparks = Make("VFX_Sparks", cube, MaterialFactory.Get(new Color(1f, 0.55f, 0.15f), 0.9f, 0f, true), 0.45f, 11f, 0.06f, 0.14f, 1.2f, 400);
             debris = Make("VFX_Debris", cube, MaterialFactory.Get(new Color(0.45f, 0.32f, 0.2f), 0.2f), 1.6f, 7f, 0.15f, 0.4f, 1.6f, 300);
+            kick = Make("VFX_WheelDust", sphere, MaterialFactory.Get(new Color(0.66f, 0.6f, 0.5f), 0.05f), 0.9f, 2.5f, 0.25f, 0.7f, -0.02f, 600);
         }
 
         static Mesh BuiltinMesh(PrimitiveType t)
@@ -71,6 +75,9 @@ namespace Mylti
             ps.Play();
             return ps;
         }
+
+        /// <summary>Small puff behind a fast rear wheel.</summary>
+        public void WheelDust(Vector3 contact) => Emit(kick, contact + Vector3.up * 0.15f, 1);
 
         void Emit(ParticleSystem ps, Vector3 pos, int count)
         {

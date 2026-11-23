@@ -139,7 +139,7 @@ namespace Mylti.Domain
 
         static bool AnyWord(string lower, IEnumerable<string> words) => words.Any(w => ContainsWord(lower, w));
 
-        static bool ContainsWord(string lower, string word)
+        public static bool ContainsWord(string lower, string word)
         {
             int i = 0;
             while ((i = lower.IndexOf(word, i, StringComparison.Ordinal)) >= 0)

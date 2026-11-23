@@ -3,9 +3,9 @@
 Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:00**: chọn concept → lập kế hoạch 5 vòng + chung kết → chạy & quay một take liền mạch → xác minh tệp video → sinh **YouTube Content Pack** (5 tiêu đề, mô tả SEO, 3 cặp title/thumbnail prompt) chỉ từ dữ kiện thật → Quality Gate.
 
 > **Trạng thái kiểm thử (trung thực):**
-> - ✅ Toàn bộ 40 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder.
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **27/27 test** chạy đạt bằng .NET 8 (thêm: lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
-> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật** (môi trường làm việc là Linux, không có Unity). Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
+> - ✅ Toàn bộ 57 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder.
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **35/35 test** chạy đạt bằng .NET 8 (thêm: lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
 
@@ -15,12 +15,28 @@ Tab đầu tiên **▶ Auto Episode** → bấm **AUTO EPISODE**:
 
 1. **FFmpeg**: tự tải một lần (~150 MB, từ github.com/BtbN/FFmpeg-Builds) vào thư mục dữ liệu của app.
 2. **Kịch bản**: Claude viết concept + 6 vòng (5 vòng tăng dần + chung kết). Lịch sử các tập trước được gửi kèm để **không trùng**; nếu quá giống (> 85 %) app yêu cầu viết lại. Mọi giá trị được kiểm tra/giới hạn. Không có key → bộ viết offline xoay vòng series × twist × đội hình chưa dùng.
-3. **Tự quay**: camera render 1920×1080 vào RenderTexture → FFmpeg (H.264). Khoá `Time.captureFramerate` = 30 nên video đúng từng khung (10:00 = 18 000 khung) kể cả máy yếu. **Chỉ hình 3D — không chữ, không thông số, không UI** (bảng điều khiển F1 không bao giờ vào video).
+3. **Tự quay**: camera render 1920×1080 vào RenderTexture → FFmpeg (H.264). Khoá `Time.captureFramerate` = 30 nên video đúng từng khung (10:00 = 18 000 khung) kể cả máy yếu. Không có UI/bảng điều khiển trong video (F1 không bao giờ vào video); chỉ có **tên xe + tốc độ km/h trên đầu xe** (vật thể 3D trong cảnh) — tắt được.
 4. **Lời bình tiếng Anh**: sau khi quay, Claude viết từng câu cho từng khoảnh khắc dựa trên sự kiện THẬT (cất cánh, tiếp đất, lật, kết quả vòng). Mỗi câu bị kiểm tra: không tiết lộ trước kết quả, không số liệu bịa, không nhãn hiệu, đúng độ dài khung thời gian; câu sai → thay bằng mẫu offline.
-5. **Giọng đọc**: Windows (miễn phí, offline, mặc định) · Google Cloud TTS (hạn mức miễn phí hằng tháng, cần key) · ElevenLabs (giọng hay nhất; gói Free không cho dùng thương mại). Lỗi/hết hạn mức → tự chuyển giọng Windows.
+5. **Giọng đọc** (xem bảng bên dưới): mặc định **Kokoro** — miễn phí, chạy trên máy, dùng thương mại được. Lỗi/hết hạn mức → tự chuyển giọng Windows.
 6. **Âm thanh**: dựng offline trên đúng timeline: lời bình + tiếng động cơ (theo tốc độ thật), gió khi bay, va chạm, nền nhẹ; tự giảm nhạc nền khi có lời.
-7. **MP4 cuối** `Runs/<runId>/FINAL_<tiêu-đề>.mp4` (H.264 + AAC) — được kiểm tra thời lượng thật.
+7. **MP4 cuối** `Runs/<runId>/FINAL_<tiêu-đề>.mp4` (H.264 + AAC) — được kiểm tra thời lượng thật. **Thẻ chữ in vào video** (FFmpeg drawtext, mờ dần vào/ra):
+   - 0–4 s: tiêu đề hook lớn (vd. *22 METER MEGA RAMP — WATCH THIS*) đè lên cảnh teaser.
+   - Thẻ tiêu đề: câu hỏi của tập + **"COMING UP: …"** liệt kê những thứ *thật sự* sẽ xuất hiện (dốc 22 m, tường thùng, cú lật…).
+   - Trước mỗi thử thách: **ROUND n / THE FINAL** + mô tả thử thách (độ cao dốc, cầu hẹp, chướng ngại, luật) + **một câu gây tò mò** về cảnh sau (vd. *NOT EVERYONE LANDS ON THEIR WHEELS* chỉ khi vòng đó thật sự có xe lật; *A NEW LONGEST JUMP IS COMING* chỉ khi kỷ lục thật sự bị phá). Không bao giờ lộ người thắng trước.
+   - Kết quả vòng, nhãn REPLAY, bảng xếp hạng cuối, lời kêu gọi bình luận.
+   - Có Claude key → Claude viết lại câu hook cho cuốn hơn; mỗi câu bị kiểm tra (không số bịa, không “crash/flip” nếu không có thật, không tên hãng, không nêu người thắng), sai → giữ câu mẫu. Danh sách thẻ lưu ở `video_cards.json`.
 8. **Kèm theo**: 5 tiêu đề, mô tả SEO có chapters, `captions_en.srt` (phụ đề tải lên YouTube, không in vào hình), `thumbnail_1280x720.jpg` (từ khung hình thật), `narration_script.json`.
+
+### Giọng đọc — nên chọn gì?
+
+| Lựa chọn | Chất lượng | Giá | Dùng cho kênh kiếm tiền |
+|---|---|---|---|
+| **★ Kokoro-82M** (mặc định) — model mã nguồn mở, chạy qua [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Tự nhiên, gần giọng thương mại | **Miễn phí, không giới hạn**, offline sau lần tải đầu (~150 MB) | ✅ Apache-2.0 |
+| ElevenLabs | Hay nhất, nhiều cảm xúc (model `eleven_multilingual_v2`) | Free 10k credit/tháng (~10k ký tự; 1 tập 10 phút ≈ 5–8k ký tự lời bình) | ❌ gói Free không cho thương mại → cần gói trả phí |
+| Google Cloud TTS | Khá | Hạn mức miễn phí hằng tháng, cần key | ✅ |
+| Giọng Windows | Cơ bản (robot) | Miễn phí | ✅ |
+
+Kokoro có 14 giọng tiếng Anh để chọn trong app (af_heart chất lượng cao nhất; am_michael / am_fenrir giọng nam hợp bình luận), nút **▶ Nghe thử giọng**. ElevenLabs: chọn model, bấm **Liệt kê giọng trong tài khoản** để chọn voice. Số trong câu được đọc thành chữ (“18.5 m” → “eighteen point five metres”) để Kokoro phát âm đúng.
 
 **Chi phí & điều kiện:** Claude API tính phí theo token (tách biệt gói Claude.ai) — lấy key tại console.anthropic.com. Giọng Windows và bộ viết offline thì miễn phí hoàn toàn. Trước khi đăng hãy xem lại video: app không thể tự đảm bảo nội dung hợp chính sách YouTube.
 
@@ -32,6 +48,7 @@ Lần đầu nên bấm **Quay thử 3 giây** để kiểm tra hình không b�
 - **Sân**: texture thủ tục (cỏ cắt sọc, nhựa đường, sàn dốc ván gỗ, bê tông, đất bãi đáp, vạch cảnh báo), khán giả trên khán đài, cờ, tường lốp, cột đèn, đồi xa.
 - **Ánh sáng & hậu kỳ (URP)**: nắng ấm, ánh sáng môi trường 3 tầng, sương xa; tonemapping ACES, bloom cho đèn, chỉnh màu, vignette nhẹ, motion blur, khử răng cưa SMAA, bóng đổ xa 300–450 m (tự trả lại cài đặt URP khi thoát).
 - **Hiệu ứng theo sự kiện thật**: bụi khi tiếp đất/lật, tia lửa + mảnh vỡ khi va chướng ngại.
+- **Khi xe chạy**: tên xe + tốc độ km/h nổi trên đầu xe (luôn quay về camera, cỡ chữ không đổi theo khoảng cách, ẩn tốc độ khi phát lại chậm), vệt đèn hậu đỏ khi > 70 km/h, bụi tung từ bánh sau khi chạy nhanh, camera bám đuôi mở rộng góc nhìn theo tốc độ.
 - Chất lượng Low / Medium / High ở tab Camera.
 
 **Không dùng nhãn hiệu xe thật** (tên, logo, kiểu dáng đặc trưng): xe là thiết kế chung chung tự tạo; `ClaimChecker` chặn tên hãng trong tiêu đề/mô tả/lời bình.

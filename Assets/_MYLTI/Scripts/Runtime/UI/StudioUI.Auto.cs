@@ -9,8 +9,9 @@ namespace Mylti
 {
     public sealed partial class StudioUI
     {
-        List<string> windowsVoices;
-        bool listingVoices;
+        List<string> windowsVoices, elevenVoices;
+        bool listingVoices, installingKokoro;
+        string kokoroStatus;
 
         // ================================================================ 0. Auto Episode (one button)
         void AutoTab()
@@ -69,11 +70,32 @@ namespace Mylti
             GUILayout.Label("Giọng đọc tiếng Anh (TTS)", h2);
             s.NarrationEnabled = GUILayout.Toggle(s.NarrationEnabled, " Có lời bình");
             s.SoundDesignEnabled = GUILayout.Toggle(s.SoundDesignEnabled, " Âm thanh động cơ / gió / va chạm");
+            if (GUILayout.Toggle(s.TtsProvider == TtsProviderKind.Kokoro, " ★ Kokoro (khuyên dùng) — giọng AI tự nhiên, MIỄN PHÍ, chạy trên máy, được dùng thương mại (Apache-2.0)")) s.TtsProvider = TtsProviderKind.Kokoro;
             if (GUILayout.Toggle(s.TtsProvider == TtsProviderKind.WindowsVoice, " Giọng có sẵn của Windows — miễn phí, offline, không cần key (giọng cơ bản)")) s.TtsProvider = TtsProviderKind.WindowsVoice;
             if (GUILayout.Toggle(s.TtsProvider == TtsProviderKind.GoogleCloud, " Google Cloud Text-to-Speech — có hạn mức miễn phí hằng tháng, cần API key")) s.TtsProvider = TtsProviderKind.GoogleCloud;
             if (GUILayout.Toggle(s.TtsProvider == TtsProviderKind.ElevenLabs, " ElevenLabs — giọng hay nhất; gói Free KHÔNG cho dùng thương mại (kênh bật kiếm tiền cần gói trả phí)")) s.TtsProvider = TtsProviderKind.ElevenLabs;
             switch (s.TtsProvider)
             {
+                case TtsProviderKind.Kokoro:
+                    GUILayout.Label("Lần đầu tự tải ~150 MB (sherpa-onnx + model Kokoro-82M) từ GitHub. Sau đó chạy offline, không giới hạn.", small);
+                    GUILayout.Label("Giọng đang chọn: " + KokoroTts.VoiceName(s.KokoroVoice), good);
+                    GUILayout.BeginHorizontal();
+                    int col = 0;
+                    foreach (var v in KokoroTts.Voices)
+                    {
+                        if (GUILayout.Toggle(s.KokoroVoice == v.Key, v.Value.Split(' ')[0], GUI.skin.button, GUILayout.Width(118))) s.KokoroVoice = v.Key;
+                        if (++col % 5 == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
+                    }
+                    GUILayout.EndHorizontal();
+                    GUILayout.Label("af = nữ Mỹ, am = nam Mỹ, bf/bm = nữ/nam Anh. Gợi ý: af_heart (chất lượng cao nhất), am_michael / am_fenrir (nam, hợp bình luận).", small);
+                    GUILayout.BeginHorizontal();
+                    GUI.enabled = !installingKokoro && !busy;
+                    if (GUILayout.Button("Tải / kiểm tra Kokoro", GUILayout.Width(200))) InstallKokoro(false);
+                    if (GUILayout.Button("▶ Nghe thử giọng", GUILayout.Width(160))) InstallKokoro(true);
+                    GUI.enabled = true;
+                    GUILayout.EndHorizontal();
+                    if (!string.IsNullOrEmpty(kokoroStatus)) GUILayout.Label(kokoroStatus, small);
+                    break;
                 case TtsProviderKind.WindowsVoice:
                     s.TtsVoice = Field("Tên giọng (trống = tự chọn)", s.TtsVoice, 300);
                     GUI.enabled = !listingVoices;
@@ -99,9 +121,33 @@ namespace Mylti
                     s.ElevenLabsKey = GUILayout.PasswordField(s.ElevenLabsKey ?? "", '*', GUILayout.Width(420));
                     GUILayout.EndHorizontal();
                     s.ElevenLabsVoiceId = Field("Voice ID", s.ElevenLabsVoiceId, 300);
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("Model", label, GUILayout.Width(160));
+                    foreach (var m in ElevenLabsTts.Models)
+                        if (GUILayout.Toggle(s.ElevenLabsModel == m, m, GUI.skin.button, GUILayout.Width(190))) s.ElevenLabsModel = m;
+                    GUILayout.EndHorizontal();
+                    GUILayout.Label("multilingual_v2 = tự nhiên nhất; turbo/flash = rẻ hơn (tốn ít credit hơn mỗi ký tự).", small);
+                    GUI.enabled = !listingVoices;
+                    if (GUILayout.Button("Liệt kê giọng trong tài khoản", GUILayout.Width(240))) ListElevenVoices();
+                    GUI.enabled = true;
+                    if (elevenVoices != null)
+                        foreach (var v in elevenVoices.Take(30))
+                        {
+                            var parts = v.Split('|');
+                            if (parts[0] == "ERROR") { GUILayout.Label(v, warn); continue; }
+                            if (GUILayout.Button(parts[1] + "  —  " + (parts.Length > 2 ? parts[2] : ""), GUILayout.Width(520))) s.ElevenLabsVoiceId = parts[0];
+                        }
                     break;
             }
             GUILayout.Label("Nếu dịch vụ trả lỗi hoặc hết hạn mức, ứng dụng tự chuyển sang giọng Windows cho các câu còn thiếu.", small);
+
+            // ---------------------------------------------------- On-screen text
+            GUILayout.Space(8);
+            GUILayout.Label("Chữ trong video", h2);
+            s.ShowNameplates = GUILayout.Toggle(s.ShowNameplates, " Tên xe + tốc độ (km/h) trên đầu xe");
+            Nameplate.Enabled = s.ShowNameplates;
+            s.BurnTextCards = GUILayout.Toggle(s.BurnTextCards, " Tiêu đề hook đầu video, giới thiệu từng thử thách, câu gây tò mò, kết quả vòng");
+            GUILayout.Label("Câu hook chỉ “nhá” những gì THẬT SỰ xảy ra ở cảnh sau (lấy từ kết quả đã quay), không bao giờ lộ người thắng trước. Có Claude key thì Claude viết lại cho cuốn hơn (vẫn bị kiểm tra).", small);
 
             // ---------------------------------------------------- Recording
             GUILayout.Space(8);
@@ -120,6 +166,37 @@ namespace Mylti
             if (draft != s.DraftDuration) s.DraftDuration = draft;
             s.RememberApiKeys = GUILayout.Toggle(s.RememberApiKeys, " Nhớ các API key trên máy này (lưu dạng văn bản trong settings.json)");
             if (GUI.changed) app.SaveSettings();
+        }
+
+        async void ListElevenVoices()
+        {
+            listingVoices = true;
+            try { elevenVoices = await ElevenLabsTts.ListVoicesAsync(app.Settings.ElevenLabsKey); }
+            catch (Exception e) { app.Msg("ElevenLabs: " + e.Message); }
+            listingVoices = false;
+        }
+
+        async void InstallKokoro(bool sample)
+        {
+            installingKokoro = true;
+            kokoroStatus = "Đang chuẩn bị…";
+            try
+            {
+                var k = new KokoroTts(TtsFactory.KokoroDir, app.Settings.KokoroVoice) { Progress = (p, m) => kokoroStatus = $"{m} ({p:P0})" };
+                if (!await k.EnsureInstalledAsync(m => kokoroStatus = m)) { kokoroStatus = "✗ " + k.LastError; return; }
+                kokoroStatus = "✓ Kokoro sẵn sàng: " + k.ExePath;
+                if (sample)
+                {
+                    string dir = System.IO.Path.Combine(TtsFactory.KokoroDir, "samples");
+                    var line = new KeyValuePair<string, string>("sample_" + app.Settings.KokoroVoice,
+                        "Three vehicles. One mega ramp. Only one of them lands it cleanly, and nobody saw round three coming.");
+                    var r = await k.SynthesizeAsync(new List<KeyValuePair<string, string>> { line }, dir, m => kokoroStatus = m);
+                    if (r.TryGetValue(line.Key, out string wav)) { kokoroStatus = "✓ Đã tạo: " + wav; Application.OpenURL("file:///" + wav.Replace('\\', '/')); }
+                    else kokoroStatus = "✗ " + k.LastError;
+                }
+            }
+            catch (Exception e) { kokoroStatus = "✗ " + e.GetBaseException().Message; }
+            finally { installingKokoro = false; }
         }
 
         async void ListVoices()

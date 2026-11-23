@@ -62,6 +62,8 @@ namespace Mylti
                 var vc = VehicleFactory.Create(e, vehicleRoot, AudioEnabled);
                 // distinct temporary spot so new vehicles never spawn inside each other
                 vc.transform.position = new Vector3(-60f - Vehicles.Count * 12f, 0.6f, -30f);
+                ColorUtility.TryParseHtmlString(e.ColorHex ?? vc.Def.DefaultColorHex, out var team);
+                vc.gameObject.AddComponent<Nameplate>().Init(vc, this, team);
                 vc.InputLocked = true;
                 Vehicles[e.VehicleId] = vc;
             }

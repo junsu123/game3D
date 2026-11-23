@@ -28,11 +28,15 @@ namespace Mylti.Domain
 
         public bool HasKey => !string.IsNullOrWhiteSpace(ApiKey);
 
+        /// <summary>Tests only: answer locally instead of calling the API.</summary>
+        public Func<string, string, Task<string>> Responder;
+
         /// <summary>Single-turn completion. Returns the concatenated text blocks, or null on failure (see LastError).</summary>
         public async Task<string> CompleteAsync(string system, string user, int maxTokens = 4096, CancellationToken ct = default)
         {
             LastError = null;
             if (!HasKey) { LastError = "No Claude API key."; return null; }
+            if (Responder != null) return await Responder(system, user).ConfigureAwait(false);
             var w = new JsonWriter(false);
             w.BeginObject().Prop("model", Model).Prop("max_tokens", maxTokens);
             if (!string.IsNullOrEmpty(system)) w.Prop("system", system);

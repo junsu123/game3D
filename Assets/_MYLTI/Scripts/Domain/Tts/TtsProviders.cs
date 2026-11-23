@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Mylti.Domain
 {
-    public enum TtsProviderKind { WindowsVoice, GoogleCloud, ElevenLabs, None }
+    public enum TtsProviderKind { WindowsVoice, GoogleCloud, ElevenLabs, None, Kokoro }
 
     /// <summary>Text-to-speech: each provider writes one audio file per line (wav or mp3) into a folder.</summary>
     public interface ITtsProvider
@@ -22,12 +22,16 @@ namespace Mylti.Domain
 
     public static class TtsFactory
     {
+        /// <summary>Folder for the local Kokoro engine + model (set by the app at start-up).</summary>
+        public static string KokoroDir = Path.Combine(Path.GetTempPath(), "mylti_tts");
+
         public static ITtsProvider Create(AppSettings s)
         {
             switch (s.TtsProvider)
             {
+                case TtsProviderKind.Kokoro: return new KokoroTts(KokoroDir, s.KokoroVoice);
                 case TtsProviderKind.GoogleCloud: return new GoogleCloudTts(s.GoogleTtsKey, s.TtsVoice);
-                case TtsProviderKind.ElevenLabs: return new ElevenLabsTts(s.ElevenLabsKey, s.ElevenLabsVoiceId);
+                case TtsProviderKind.ElevenLabs: return new ElevenLabsTts(s.ElevenLabsKey, s.ElevenLabsVoiceId) { Model = string.IsNullOrWhiteSpace(s.ElevenLabsModel) ? "eleven_multilingual_v2" : s.ElevenLabsModel.Trim() };
                 case TtsProviderKind.WindowsVoice: return new WindowsVoiceTts(s.TtsVoice);
                 default: return null;
             }
@@ -166,7 +170,9 @@ $s.Dispose()";
     {
         static readonly HttpClient http = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
         readonly string key, voiceId;
-        public string Model = "eleven_flash_v2_5";
+        /// <summary>eleven_multilingual_v2 = most natural; eleven_flash_v2_5 / eleven_turbo_v2_5 = cheaper per character.</summary>
+        public static readonly string[] Models = { "eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5" };
+        public string Model = "eleven_multilingual_v2";
         public string Name => "ElevenLabs";
         public string LastError { get; private set; }
 
@@ -184,7 +190,9 @@ $s.Dispose()";
             foreach (var l in lines)
             {
                 var w = new JsonWriter(false);
-                w.BeginObject().Prop("text", l.Value).Prop("model_id", Model).EndObject();
+                w.BeginObject().Prop("text", l.Value).Prop("model_id", Model)
+                 .Key("voice_settings").BeginObject().Prop("stability", 0.4).Prop("similarity_boost", 0.8).Prop("style", 0.35).Prop("use_speaker_boost", true).EndObject()
+                 .EndObject();
                 using (var req = new HttpRequestMessage(HttpMethod.Post, $"https://api.elevenlabs.io/v1/text-to-speech/{Uri.EscapeDataString(voiceId)}"))
                 {
                     req.Headers.Add("xi-api-key", key);
@@ -208,6 +216,32 @@ $s.Dispose()";
                 }
             }
             return result;
+        }
+
+        /// <summary>Voices available to this API key: "voice_id|name|accent, gender…".</summary>
+        public static async Task<List<string>> ListVoicesAsync(string key)
+        {
+            var list = new List<string>();
+            if (string.IsNullOrWhiteSpace(key)) return list;
+            using (var req = new HttpRequestMessage(HttpMethod.Get, "https://api.elevenlabs.io/v1/voices"))
+            {
+                req.Headers.Add("xi-api-key", key.Trim());
+                try
+                {
+                    var resp = await http.SendAsync(req).ConfigureAwait(false);
+                    string body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (!resp.IsSuccessStatusCode) { list.Add($"ERROR|ElevenLabs {(int)resp.StatusCode}|{(body.Length > 160 ? body.Substring(0, 160) : body)}"); return list; }
+                    foreach (var v in MiniJson.Arr(MiniJson.Get(MiniJson.Obj(MiniJson.Parse(body)), "voices")) ?? new List<object>())
+                    {
+                        var o = MiniJson.Obj(v);
+                        var labels = MiniJson.Obj(MiniJson.Get(o, "labels"));
+                        string info = labels == null ? "" : string.Join(", ", labels.Values.Where(x => x is string).Cast<string>());
+                        list.Add(MiniJson.GetString(o, "voice_id") + "|" + MiniJson.GetString(o, "name") + "|" + info);
+                    }
+                }
+                catch (Exception e) { list.Add("ERROR|" + e.GetBaseException().Message + "|"); }
+            }
+            return list;
         }
     }
 }

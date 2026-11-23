@@ -173,12 +173,13 @@ namespace Mylti
                     pos = f - dir * (11f + spread) + Vector3.up * (4f + spread * 0.3f);
                     look = f + dir * 6f + Vector3.up;
                     smooth = 0.15f;
+                    fov = 55f + Mathf.Clamp01(fv.magnitude / 50f) * 9f; // speed FOV kick
                     break;
                 }
                 case Shot.SideTracking:
                 case Shot.ReplaySide:
                     pos = new Vector3(side + 22f + spread * 1.2f, Mathf.Max(3f, f.y * 0.7f + 3f), f.z - 6f);
-                    fov = 50f;
+                    fov = 50f + Mathf.Clamp01(fv.magnitude / 50f) * 6f;
                     smooth = 0.25f;
                     break;
                 case Shot.LowAngleLip:

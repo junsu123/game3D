@@ -193,6 +193,7 @@ namespace Mylti
                 Set(tN, StepState.Running, "Đang đọc lời bình…");
                 var lines = Narration.Lines.Where(l => !string.IsNullOrWhiteSpace(l.Text)).Select(l => new KeyValuePair<string, string>(l.SlotId, l.Text)).ToList();
                 var provider = TtsFactory.Create(S);
+                if (provider is KokoroTts kokoro) kokoro.Progress = (pr, m) => Step(tN).Detail = $"Tải giọng Kokoro lần đầu: {m} ({pr:P0})";
                 Dictionary<string, string> ttsFiles = new Dictionary<string, string>();
                 if (provider != null)
                 {
@@ -285,13 +286,54 @@ namespace Mylti
             Set(fN, StepState.Running, "Đang ghép video + âm thanh…");
             string title = d.Pack.Titles.FirstOrDefault(t => t.Recommended)?.Text ?? run.RunId;
             string final = Path.Combine(d.RunFolder, "FINAL_" + Slug(title) + ".mp4");
-            var mux = Ffmpeg.RunAsync($"-y -hide_banner -loglevel error -i {FfmpegTool.Q(silent)} -i {FfmpegTool.Q(mixPath)} -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -ac 2 -shortest -movflags +faststart {FfmpegTool.Q(final)}", 600000);
-            while (!mux.IsCompleted) yield return null;
+            string audioArgs = "-map 0:v:0 -map 1:a:0 -c:a aac -b:a 192k -ac 2 -shortest -movflags +faststart";
+            string inputs = $"-y -hide_banner -loglevel error -i {FfmpegTool.Q(silent)} -i {FfmpegTool.Q(mixPath)}";
+            Task<FfmpegTool.Result> mux = null;
+            bool cardsBurned = false;
+
+            // on-screen text: hook, "coming up", round intros + curiosity hooks, results, standings (from the REAL run)
+            if (S.BurnTextCards)
+            {
+                var cards = VideoCardBuilder.Build(run);
+                var claude = Claude();
+                if (claude != null && claude.HasKey)
+                {
+                    Step(fN).Detail = "Claude đang viết câu hook…";
+                    var ht = VideoCardBuilder.ImproveHooksWithClaudeAsync(cards, claude, m => App.Msg(m));
+                    while (!ht.IsCompleted) yield return null;
+                }
+                string bold = VideoCardBuilder.FindFont("arialbd.ttf", "segoeuib.ttf", "verdanab.ttf");
+                string heavy = VideoCardBuilder.FindFont("impact.ttf", "ariblk.ttf", "arialbd.ttf") ?? bold;
+                try { File.WriteAllText(Path.Combine(d.RunFolder, "video_cards.json"), MiniJson.Serialize(cards), new UTF8Encoding(false)); }
+                catch (Exception e) { App.Msg("video_cards.json: " + e.Message); }
+                if (bold != null && cards.Count > 0)
+                {
+                    string filterFile = Path.Combine(d.RunFolder, "video", "cards_filter.txt");
+                    File.WriteAllText(filterFile, VideoCardBuilder.BuildFilter(cards, Path.Combine(d.RunFolder, "video", "cards_text"), bold, heavy), new UTF8Encoding(false));
+                    string enc = Ffmpeg.VideoEncoderArgs() + " -pix_fmt yuv420p";
+                    Step(fN).Detail = $"Đang in {cards.Count} thẻ chữ vào video (mã hoá lại, vài phút)…";
+                    // FFmpeg ≥ 7 reads a filter from a file with "-/vf"; older builds use -filter_script:v
+                    foreach (var opt in new[] { "-/vf", "-filter_script:v" })
+                    {
+                        mux = Ffmpeg.RunAsync($"{inputs} {opt} {FfmpegTool.Q(filterFile)} {enc} {audioArgs} {FfmpegTool.Q(final)}", 3600000);
+                        while (!mux.IsCompleted) yield return null;
+                        if (!mux.IsFaulted && mux.Result.ExitCode == 0 && File.Exists(final)) { cardsBurned = true; break; }
+                        App.Msg("Thẻ chữ (" + opt + "): " + (mux.IsFaulted ? mux.Exception.GetBaseException().Message : mux.Result.StdErr));
+                    }
+                }
+                else App.Msg("Không tìm thấy font Windows (Arial) → xuất video không có thẻ chữ.");
+            }
+            if (!cardsBurned)
+            {
+                mux = Ffmpeg.RunAsync($"{inputs} -c:v copy {audioArgs} {FfmpegTool.Q(final)}", 600000);
+                while (!mux.IsCompleted) yield return null;
+            }
             if (mux.IsFaulted || mux.Result.ExitCode != 0 || !File.Exists(final))
             {
                 Set(fN, StepState.Failed, mux.IsFaulted ? mux.Exception.GetBaseException().Message : mux.Result.StdErr);
                 yield break;
             }
+            if (cardsBurned) run.ManualOverrides.Add("post-production: text cards (hooks / round intros / results) burned in from video_cards.json");
             var status = App.Capture.Verify(final);
             FinalVideoPath = final;
             run.ManualOverrides.Add("post-production: narration + soundtrack muxed into " + Path.GetFileName(final));

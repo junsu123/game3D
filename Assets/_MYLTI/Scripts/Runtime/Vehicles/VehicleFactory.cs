@@ -96,6 +96,7 @@ namespace Mylti
             vc.Wheels[0].ConfigureVehicleSubsteps(5f, 12, 15);
             vc.CaptureWheelRestPose();
 
+            root.AddComponent<SpeedFx>().Init(vc, def.BodyStyle == "truck" ? bottom + 0.6f : bottom);
             var rep = root.AddComponent<Replayable>();
             rep.Id = def.Id;
             rep.Body = rb;

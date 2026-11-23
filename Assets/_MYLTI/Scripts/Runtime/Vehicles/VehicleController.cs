@@ -178,6 +178,8 @@ namespace Mylti
             SetInput(0, 0, 0);
             lastBodyContact = -10f;
             Body.WakeUp();
+            var fx = GetComponent<SpeedFx>();
+            if (fx != null) fx.ClearTrails();
         }
 
         /// <summary>Replay mode: physics disabled, pose driven by recorded data.</summary>

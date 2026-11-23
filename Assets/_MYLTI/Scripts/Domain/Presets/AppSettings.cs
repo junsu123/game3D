@@ -19,7 +19,11 @@ namespace Mylti.Domain
         public bool RememberApiKeys = true;
 
         // English voice-over
-        public TtsProviderKind TtsProvider = TtsProviderKind.WindowsVoice;
+        public TtsProviderKind TtsProvider = TtsProviderKind.Kokoro;   // free local neural voice (Apache-2.0)
+        public int KokoroVoice = 3;                                     // af_heart
+        public string ElevenLabsModel = "eleven_multilingual_v2";
+        public bool BurnTextCards = true;                               // intro / hook / result text in the final MP4
+        public bool ShowNameplates = true;                              // name + speed above each vehicle
         public string TtsVoice = "";
         public string GoogleTtsKey = "";
         public string ElevenLabsKey = "";
@@ -55,6 +59,8 @@ namespace Mylti.Domain
                 .Prop("ttsProvider", TtsProvider.ToString()).Prop("ttsVoice", TtsVoice)
                 .Prop("googleTtsKey", RememberApiKeys ? GoogleTtsKey : "")
                 .Prop("elevenLabsKey", RememberApiKeys ? ElevenLabsKey : "").Prop("elevenLabsVoiceId", ElevenLabsVoiceId)
+                .Prop("elevenLabsModel", ElevenLabsModel).Prop("kokoroVoice", KokoroVoice)
+                .Prop("burnTextCards", BurnTextCards).Prop("showNameplates", ShowNameplates)
                 .Prop("narrationEnabled", NarrationEnabled).Prop("soundDesignEnabled", SoundDesignEnabled)
                 .EndObject();
         }
@@ -87,7 +93,11 @@ namespace Mylti.Domain
                 s.LetClaudePickVehicles = MiniJson.GetBool(o, "letClaudePickVehicles", true);
                 s.RememberApiKeys = MiniJson.GetBool(o, "rememberApiKeys", true);
                 s.ClaudeApiKey = MiniJson.GetString(o, "claudeApiKey", "");
-                s.TtsProvider = ScenarioConfig.ParseEnum(MiniJson.GetString(o, "ttsProvider"), TtsProviderKind.WindowsVoice);
+                s.TtsProvider = ScenarioConfig.ParseEnum(MiniJson.GetString(o, "ttsProvider"), TtsProviderKind.Kokoro);
+                s.KokoroVoice = MiniJson.GetInt(o, "kokoroVoice", 3);
+                s.ElevenLabsModel = MiniJson.GetString(o, "elevenLabsModel", "eleven_multilingual_v2");
+                s.BurnTextCards = MiniJson.GetBool(o, "burnTextCards", true);
+                s.ShowNameplates = MiniJson.GetBool(o, "showNameplates", true);
                 s.TtsVoice = MiniJson.GetString(o, "ttsVoice", "");
                 s.GoogleTtsKey = MiniJson.GetString(o, "googleTtsKey", "");
                 s.ElevenLabsKey = MiniJson.GetString(o, "elevenLabsKey", "");

@@ -110,6 +110,8 @@ namespace Mylti
             Replay = gameObject.AddComponent<ReplaySystem>();
             Replay.Clock = Clock;
             Ffmpeg = new FfmpegTool(Path.Combine(DataRoot, "ffmpeg"), Settings.FfmpegPath);
+            TtsFactory.KokoroDir = Path.Combine(DataRoot, "tts");
+            Nameplate.Enabled = Settings.ShowNameplates;
             Recorder = gameObject.AddComponent<BuiltInRecorder>();
             Recorder.Cam = Cam.GetComponent<Camera>();
             Recorder.Ffmpeg = Ffmpeg;
