@@ -9,15 +9,15 @@ Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:
 
 ---
 
-## 1. Cài đặt trên Windows 11
+## 1. Cài đặt trên Windows 11 (3 bước)
 
-1. Cài **Unity Hub** và **Unity 6.3 LTS (6000.3.x)** (bản Unity 6 LTS mới hơn cũng được). Module *Windows Build Support* đi kèm bản Windows.
-2. Unity Hub ▸ **New project** ▸ template **Universal 3D (URP)** ▸ đặt tên `MYLTI_Challenge_Studio` ▸ Create.
-3. Mở thư mục dự án trong Explorer, **chép thư mục `Assets/_MYLTI`** của gói này vào `Assets/` của dự án. Unity sẽ tự import và biên dịch.
-4. Hộp thoại *“Tạo scene demo MegaRampDemo…?”* hiện ra → **Tạo ngay**. (Hoặc menu **MYLTI ▸ Setup Demo Scene**.) Lệnh này tạo `Assets/_MYLTI/Scenes/MegaRampDemo.unity`, thêm vào Build Profiles, đặt độ phân giải mặc định 1920×1080, *Run In Background*.
-5. Đặt Game view thành **1920×1080 (16:9)** rồi bấm **Play**.
-6. *(Tuỳ chọn – quay trong Editor)* **Window ▸ Package Manager ▸ + ▸ Add package by name…** → `com.unity.recorder`. Tab *Video Capture* sẽ hiện “Unity Recorder ✓ sẵn sàng”.
-7. **Build Windows:** menu **MYLTI ▸ Build Windows x64** → `Builds/Windows/MYLTI Challenge Studio.exe`. (Hoặc File ▸ Build Profiles ▸ Windows ▸ Build.)
+1. Unity Hub ▸ **New project** ▸ template **Universal 3D** ▸ Create.
+2. Trên trang GitHub này bấm **Code ▸ Download ZIP**, giải nén, rồi chép thư mục `Assets/_MYLTI` vào thư mục `Assets` của dự án (trong Unity: cửa sổ *Project* ▸ chuột phải `Assets` ▸ **Show in Explorer**).
+3. Chờ Unity biên dịch xong rồi bấm **▶ Play**. Studio tự khởi động trong bất kỳ scene nào (kể cả `SampleScene`) — không cần tạo scene.
+
+**Ra tệp .exe (tuỳ chọn):** menu **MYLTI ▸ Build Windows x64** → thư mục chứa `MYLTI Challenge Studio.exe` tự mở ra; chép cả thư mục đó sang máy nào cũng chạy bằng cách nhấp đúp.
+
+*(Tuỳ chọn – quay trong Editor)* **Window ▸ Package Manager ▸ + ▸ Add package by name…** → `com.unity.recorder`.
 
 Không cần mạng, tài khoản hay API trả phí. Dữ liệu người dùng nằm tại
 `%USERPROFILE%\AppData\LocalLow\MYLTI\MYLTI Challenge Studio\` (menu **MYLTI ▸ Open Data Folder**):

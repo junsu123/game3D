@@ -52,6 +52,17 @@ namespace Mylti
         public RunRecord SandboxRun { get; private set; }
         public List<AttemptRecord> LastSandboxResults = new List<AttemptRecord>();
 
+        /// <summary>
+        /// Zero-setup start: pressing Play in ANY scene (e.g. the template's SampleScene) launches the studio.
+        /// If the scene already contains a StudioApp, nothing extra is created.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void AutoBootstrap()
+        {
+            if (Instance != null || FindAnyObjectByType<StudioApp>() != null) return;
+            new GameObject("MYLTI_Studio").AddComponent<StudioApp>();
+        }
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }

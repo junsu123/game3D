@@ -9,24 +9,9 @@ using UnityEngine;
 namespace Mylti.EditorTools
 {
     /// <summary>One-click project setup: creates the demo scene, build settings and player settings.</summary>
-    [InitializeOnLoad]
     public static class MyltiSetupMenu
     {
         public const string ScenePath = "Assets/_MYLTI/Scenes/MegaRampDemo.unity";
-        const string AskedKey = "MYLTI_SetupAsked";
-
-        static MyltiSetupMenu()
-        {
-            EditorApplication.delayCall += () =>
-            {
-                if (File.Exists(ScenePath) || SessionState.GetBool(AskedKey, false) || Application.isBatchMode) return;
-                SessionState.SetBool(AskedKey, true);
-                if (EditorUtility.DisplayDialog("MYLTI Challenge Studio",
-                        "Tạo scene demo MegaRampDemo và cấu hình build Windows ngay bây giờ?\n(Có thể làm sau qua menu MYLTI ▸ Setup Demo Scene)",
-                        "Tạo ngay", "Để sau"))
-                    Setup();
-            };
-        }
 
         [MenuItem("MYLTI/Setup Demo Scene", priority = 0)]
         public static void Setup()
@@ -80,12 +65,20 @@ namespace Mylti.EditorTools
         [MenuItem("MYLTI/Build Windows x64", priority = 40)]
         public static void BuildWindows()
         {
-            if (!File.Exists(ScenePath)) Setup();
+            // Build whatever scenes are enabled (the template's SampleScene works: the studio boots itself).
+            var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
+            if (scenes.Length == 0)
+            {
+                Setup();
+                scenes = new[] { ScenePath };
+            }
+            PlayerSettings.productName = "MYLTI Challenge Studio";
+            PlayerSettings.runInBackground = true;
             string outDir = Path.GetFullPath("Builds/Windows");
             Directory.CreateDirectory(outDir);
             var opts = new BuildPlayerOptions
             {
-                scenes = new[] { ScenePath },
+                scenes = scenes,
                 locationPathName = Path.Combine(outDir, "MYLTI Challenge Studio.exe"),
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None
