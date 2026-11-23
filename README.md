@@ -3,8 +3,8 @@
 Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:00**: chọn concept → lập kế hoạch 5 vòng + chung kết → chạy & quay một take liền mạch → xác minh tệp video → sinh **YouTube Content Pack** (5 tiêu đề, mô tả SEO, 3 cặp title/thumbnail prompt) chỉ từ dữ kiện thật → Quality Gate.
 
 > **Trạng thái kiểm thử (trung thực):**
-> - ✅ Toàn bộ 76 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder, nhánh nạp mẫu xe .glb (glTFast) và khán giả có khung xương (SkinnedMeshRenderer, Playables).
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **68/68 test** chạy đạt bằng .NET 8 (thêm: khán giả — lưới người hợp lệ, đội siêu anh hùng tự sáng tạo, tư thế vỗ tay/giơ tay, cảm xúc đám đông theo sự kiện, tiếng reo hò/vỗ tay; vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ✅ Toàn bộ 80 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder, nhánh nạp mẫu xe .glb (glTFast) và khán giả có khung xương (SkinnedMeshRenderer, Playables).
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **73/73 test** (thêm xe hoạt hình: lưới hợp lệ, mặt ở mũi xe, mí mắt/con ngươi, biểu cảm, chọn dàn xe) chạy đạt bằng .NET 8 (thêm: khán giả — lưới người hợp lệ, đội siêu anh hùng tự sáng tạo, tư thế vỗ tay/giơ tay, cảm xúc đám đông theo sự kiện, tiếng reo hò/vỗ tay; vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
 > - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows, chưa tải video thật lên YouTube, chưa nạp thử mẫu xe .glb thật, chưa xem móp méo/HDRI/khán giả chuyển động trên màn hình** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt; hình khán giả/siêu anh hùng đã được dựng thử bằng trình vẽ phần mềm để kiểm tra dáng và tư thế. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
@@ -79,6 +79,17 @@ Tab **📅 Lịch & Đăng**:
 - Thả nhạc (.mp3/.wav/.m4a/.ogg) vào thư mục **Music** (nút trong tab ▶ Auto Episode) — mỗi tập một bài, tự nhỏ đi khi có lời bình, fade đầu/cuối. Chỉ dùng nhạc bạn có quyền dùng trên YouTube (gợi ý: YouTube Studio ▸ Audio Library).
 - **Bầu trời HDRI chụp thật** (Poly Haven, CC0, tự tải vài MB một lần): skybox + ánh sáng môi trường + phản chiếu trên thân xe/kính. Có thể thả file .hdr của bạn vào thư mục **Sky**. Không tải được → dùng bầu trời mặc định.
 - Âm thanh va chạm kim loại + vỡ kính được tổng hợp theo đúng thời điểm và lực va.
+
+## 🚗😀 MYLTI Toons — xe hoạt hình của kênh
+
+![MYLTI Toons](docs/images/mylti_toons.png)
+![Biểu cảm](docs/images/mylti_toons_faces.png)
+
+- 6 xe hoạt hình **do kênh tự thiết kế** — không logo, không tên hãng, không dựa trên nhân vật phim nào: **Zippy** (xe nhỏ xanh lá, lanh chanh), **Bruno** (bán tải địa hình cam, đèn nóc + khung chống lật), **Duchess** (coupe tím sang chảnh), **Turbo Tito** (xe đua xanh ngọc có cánh gió), **Big Bao** (xe van tròn xanh trời), **Rumble** (xe tải quái vật tím bánh khổng lồ).
+- **Mặt sống động**: mắt là đèn pha có mí, con ngươi, lông mày; miệng trên cản trước. Biểu cảm tự đổi theo chuyển động thật: chớp mắt, nhìn camera khi đứng yên, thỉnh thoảng nháy mắt; nhíu mày quyết tâm khi tăng tốc; trợn mắt + miệng chữ “O” khi bay (nhìn xuống khi rơi); nhắm tịt mắt khi đâm; cười toe khi đáp; hoảng loạn, mắt đảo vòng khi lật ngửa. Chạy cả trong replay.
+- **Thân xe nhún kiểu hoạt hình** (bẹp xuống khi tiếp đất, dãn ra khi bật lên) — chỉ là hình ảnh, vật lý không đổi. Xe vẫn móp/vỡ kính khi va chạm.
+- Mỗi xe có vật lý riêng (khối lượng, lực kéo, giảm xóc): Rumble nặng và nảy, Turbo Tito nhanh nhất, Zippy nhẹ bay xa.
+- Tab ▶ Auto Episode ▸ **Dàn xe**: *Xe hoạt hình MYLTI Toons* (mặc định) · *Xe thật / xe mẫu* · *Trộn cả hai*.
 
 ## 🦸 Khán giả hoạt hình + đội siêu anh hùng MYLTI Squad
 

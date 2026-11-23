@@ -143,7 +143,7 @@ namespace Mylti.Tests
             StringAssert.StartsWith("Toyota Hilux", def2.DisplayNameEn);
             Assert.AreEqual(2250f, def2.MassKg, 1e-3);
             Assert.IsTrue(def2.MotorTorquePerWheel > 300);
-            Assert.AreEqual(5, VehicleCatalog.All.Count, "3 built-in + 2 user");
+            Assert.AreEqual(5 + ToonCars.All.Length, VehicleCatalog.All.Count, "3 built-in + 6 toons + 2 user");
         }
 
         [Test]

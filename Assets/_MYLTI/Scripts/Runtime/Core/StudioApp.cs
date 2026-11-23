@@ -88,6 +88,7 @@ namespace Mylti
             SettingsPath = Path.Combine(DataRoot, "settings.json");
             Directory.CreateDirectory(RunsRoot);
             Settings = AppSettings.Load(SettingsPath, out string settingsError);
+            VehicleCatalog.Cast = Settings.CastMode;
             if (settingsError != null) Msg(settingsError);
             Presets = new PresetRepository(Path.Combine(DataRoot, "Presets"));
             History = new NoveltyHistory(Path.Combine(DataRoot, "episode_history.json"));

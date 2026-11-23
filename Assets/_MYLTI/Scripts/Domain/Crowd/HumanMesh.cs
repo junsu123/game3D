@@ -95,14 +95,14 @@ namespace Mylti.Domain
         static readonly Vector3 Forward = Vector3.UnitZ;
         static float Lerp(float a, float b, float t) => a + (b - a) * Math.Clamp(t, 0f, 1f);
 
-        sealed class Builder
+        internal sealed class Builder
         {
             public readonly List<Vector3> V = new List<Vector3>();
             public readonly List<int> Cells = new List<int>();
             public readonly List<int> T = new List<int>();
             public readonly List<int> Bone = new List<int>();
 
-            int Vert(Vector3 p, int uv, int bone)
+            internal int Vert(Vector3 p, int uv, int bone)
             {
                 V.Add(p); Cells.Add(uv); Bone.Add(bone);
                 return V.Count - 1;
@@ -138,6 +138,45 @@ namespace Mylti.Domain
                     int s1 = (s + 1) % seg;
                     T.Add(ca); T.Add(baseA + s); T.Add(baseA + s1);
                     T.Add(cb); T.Add(baseA + seg + s1); T.Add(baseA + seg + s);
+                }
+            }
+
+            /// <summary>
+            /// Lofted body along +Z: superellipse sections (half-width, bottom y, top y) at each station, capped at both
+            /// ends. Same winding as Tube.
+            /// </summary>
+            public void Loft((float z, float hw, float yb, float yt)[] st, float exponent, int uv, int seg = 28)
+            {
+                int start = V.Count;
+                float e = 2f / exponent;
+                foreach (var s in st)
+                {
+                    float cy = (s.yb + s.yt) * 0.5f, b = (s.yt - s.yb) * 0.5f;
+                    for (int k = 0; k < seg; k++)
+                    {
+                        float ang = k * MathF.PI * 2f / seg;
+                        float c = MathF.Cos(ang), sn = MathF.Sin(ang);
+                        float x = s.hw * MathF.Sign(c) * MathF.Pow(MathF.Abs(c), e);
+                        float y = cy - b * MathF.Sign(sn) * MathF.Pow(MathF.Abs(sn), e);
+                        Vert(new Vector3(x, y, s.z), uv, 0);
+                    }
+                }
+                for (int r = 0; r + 1 < st.Length; r++)
+                    for (int k = 0; k < seg; k++)
+                    {
+                        int k1 = (k + 1) % seg;
+                        int i0 = start + r * seg + k, i1 = start + r * seg + k1, j0 = i0 + seg, j1 = i1 + seg;
+                        T.Add(i0); T.Add(j0); T.Add(i1);
+                        T.Add(i1); T.Add(j0); T.Add(j1);
+                    }
+                var f = st[0]; var l = st[st.Length - 1];
+                int ca = Vert(new Vector3(0, (f.yb + f.yt) * 0.5f, f.z), uv, 0), cb = Vert(new Vector3(0, (l.yb + l.yt) * 0.5f, l.z), uv, 0);
+                int last = start + (st.Length - 1) * seg;
+                for (int k = 0; k < seg; k++)
+                {
+                    int k1 = (k + 1) % seg;
+                    T.Add(ca); T.Add(start + k); T.Add(start + k1);
+                    T.Add(cb); T.Add(last + k1); T.Add(last + k);
                 }
             }
 

@@ -30,6 +30,7 @@ namespace Mylti.Domain
         public float DamageStrength = 1f;                               // body deformation multiplier
         public bool MusicEnabled = true;                                // music files from <data>/Music
         public float MusicVolume = 0.6f;
+        public string VehicleCast = "toons";                            // toons | real | mix  (who races in Auto Episodes)
         public bool CrowdEnabled = true;                                // animated spectators + crowd sound
         public float CrowdDensity = 1f;                                 // 0.3 … 1.5 (fewer people = faster PC)
         public float CrowdVolume = 0.7f;
@@ -75,7 +76,7 @@ namespace Mylti.Domain
                 .Prop("burnTextCards", BurnTextCards).Prop("showNameplates", ShowNameplates).Prop("nameplateSize", NameplateSize).Prop("handheldCamera", HandheldCamera)
                 .Prop("allowRealBrands", AllowRealBrands).Prop("damageStrength", DamageStrength).Prop("musicEnabled", MusicEnabled)
                 .Prop("musicVolume", MusicVolume).Prop("useHdriSky", UseHdriSky).Prop("hdriId", HdriId)
-                .Prop("crowdEnabled", CrowdEnabled).Prop("crowdDensity", CrowdDensity).Prop("crowdVolume", CrowdVolume).Prop("crowdHeroShare", CrowdHeroShare)
+                .Prop("vehicleCast", VehicleCast).Prop("crowdEnabled", CrowdEnabled).Prop("crowdDensity", CrowdDensity).Prop("crowdVolume", CrowdVolume).Prop("crowdHeroShare", CrowdHeroShare)
                 .Prop("narrationEnabled", NarrationEnabled).Prop("soundDesignEnabled", SoundDesignEnabled)
                 .EndObject();
         }
@@ -121,6 +122,8 @@ namespace Mylti.Domain
                 s.MusicVolume = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "musicVolume", 0.6)));
                 s.UseHdriSky = MiniJson.GetBool(o, "useHdriSky", true);
                 s.CrowdEnabled = MiniJson.GetBool(o, "crowdEnabled", true);
+                s.VehicleCast = MiniJson.GetString(o, "vehicleCast", "toons");
+                if (s.VehicleCast != "toons" && s.VehicleCast != "real" && s.VehicleCast != "mix") s.VehicleCast = "toons";
                 s.CrowdDensity = (float)Math.Max(0.3, Math.Min(1.5, MiniJson.GetDouble(o, "crowdDensity", 1)));
                 s.CrowdVolume = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "crowdVolume", 0.7)));
                 s.CrowdHeroShare = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "crowdHeroShare", 0.6)));
@@ -144,5 +147,7 @@ namespace Mylti.Domain
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, MiniJson.Serialize(this), new UTF8Encoding(false));
         }
+
+        public VehicleCatalog.CastMode CastMode => VehicleCast == "real" ? VehicleCatalog.CastMode.Real : VehicleCast == "mix" ? VehicleCatalog.CastMode.Mixed : VehicleCatalog.CastMode.Toons;
     }
 }

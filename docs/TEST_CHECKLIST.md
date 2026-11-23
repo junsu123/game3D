@@ -3,7 +3,7 @@
 Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .NET) · 🎮 phải kiểm trong Unity
 
 ## A. Tự động (Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All)
-✅ 68 test đã chạy đạt bằng .NET 8 ngoài Unity; ☐ chạy lại trong Unity Test Runner.
+✅ 73 test đã chạy đạt bằng .NET 8 ngoài Unity; ☐ chạy lại trong Unity Test Runner.
 
 ## B. Mốc A — vertical slice 🎮
 - ☐ Mở dự án: Console **không lỗi compile** (cảnh báo “reference to non-existent assembly” khi chưa cài Recorder là bình thường).
@@ -72,3 +72,11 @@ Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .N
 - [ ] Đổi Chase ↔ Side: máy lướt mượt, không cắt giật.
 - [ ] Tên + tốc độ trên đầu xe đọc rõ ở mọi góc (cả tele); thanh cỡ chữ có tác dụng.
 - [ ] Video 60 fps: mở file xem — chuyển động mượt; YouTube hiện “1080p60”.
+
+## MYLTI Toons (xe hoạt hình)
+- [ ] Dàn xe = MYLTI Toons → Auto Episode chỉ dùng 6 xe hoạt hình; tab Xe liệt kê đủ 6.
+- [ ] Đứng yên: xe chớp mắt, con ngươi nhìn theo camera, thỉnh thoảng nháy mắt. Chạy nhanh: nhíu mày.
+- [ ] Bay: mắt mở to, miệng chữ O; rơi: nhìn xuống. Đáp: thân bẹp xuống rồi bật lại, cười toe. Đâm: nhắm tịt mắt. Lật ngửa: mắt đảo vòng.
+- [ ] Mí mắt không xuyên qua thân xe khi mở; không thấy khe hở giữa mắt và đầu xe.
+- [ ] Vật lý: cả 6 xe lên được dốc, Rumble không quá dễ lật; chỉnh CenterOfMassY trong ToonCars.cs nếu cần.
+- [ ] Va chạm: thân xe móp, kính cabin vỡ; mắt/miệng không bị kéo méo kỳ lạ.

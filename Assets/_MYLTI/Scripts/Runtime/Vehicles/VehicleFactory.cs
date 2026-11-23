@@ -40,8 +40,15 @@ namespace Mylti
 
             // Physics shape: simple boxes (stable, cheap). Visual shape: smooth lofted body built on top.
             float bottom, lowerH;
-            switch (def.BodyStyle)
+            var toon = def.BodyStyle == "toon" ? ToonCars.Find(def.Id) : null;
+            switch (toon != null ? "toon" : def.BodyStyle)
             {
+                case "toon":
+                    bottom = toon.Bottom; lowerH = toon.Top - toon.Bottom;
+                    Box(body, "Col_Lower", new Vector3(0, (toon.Bottom + toon.Top) * 0.5f, 0), new Vector3(W * 0.96f, lowerH, Lg * 0.98f), paint, true);
+                    Box(body, "Col_Cabin", new Vector3(0, (toon.Top + toon.CabinTop) * 0.5f, (toon.CabinRear + toon.CabinFront) * 0.5f),
+                        new Vector3(W * toon.CabinWidth * 0.95f, toon.CabinTop - toon.Top, toon.CabinFront - toon.CabinRear), paint, true);
+                    break;
                 case "truck":
                     bottom = r * 1.05f; lowerH = 0.55f;
                     Box(body, "Col_Frame", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W * 0.92f, lowerH, Lg), paint, true);
@@ -59,7 +66,7 @@ namespace Mylti
                     Box(body, "Col_Cabin", new Vector3(0, bottom + lowerH + 0.2f, -Lg * 0.08f), new Vector3(W * 0.78f, 0.42f, Lg * 0.42f), paint, true);
                     break;
             }
-            CarBodyBuilder.Build(def, body, def.BodyStyle == "truck" ? bottom + 0.1f : bottom, paint);
+            if (toon == null) CarBodyBuilder.Build(def, body, def.BodyStyle == "truck" ? bottom + 0.1f : bottom, paint);
 
             rb.centerOfMass = new Vector3(0, bottom + 0.3f + def.CenterOfMassY, 0);
 
@@ -67,6 +74,7 @@ namespace Mylti
             var vc = root.AddComponent<VehicleController>();
             vc.Def = def;
             vc.Entrant = entrant;
+            if (toon != null) ToonCarRig.Build(toon, body, vc);
             float halfTrack = Mathf.Max(def.Track * 0.5f, W * 0.5f + 0.06f);
             float hb = def.Wheelbase * 0.5f;
             Vector3[] pos =
@@ -105,7 +113,7 @@ namespace Mylti
             vc.CaptureWheelRestPose();
 
             root.AddComponent<SpeedFx>().Init(vc, def.BodyStyle == "truck" ? bottom + 0.6f : bottom);
-            var bodyMeshes = body.GetComponentsInChildren<MeshFilter>().Where(m => m.GetComponent<Renderer>() != null && m.GetComponent<Renderer>().enabled && !GlassLike(m.name)).ToList();
+            var bodyMeshes = body.GetComponentsInChildren<MeshFilter>().Where(m => m.GetComponent<Renderer>() != null && m.GetComponent<Renderer>().enabled && !GlassLike(m.name) && !m.name.StartsWith("Face_")).ToList();
             var windows = body.GetComponentsInChildren<Renderer>().Where(x => x.enabled && GlassLike(x.name)).ToList();
             root.AddComponent<VehicleDamage>().Init(vc, bodyMeshes, windows, def.Length);
             var rep = root.AddComponent<Replayable>();

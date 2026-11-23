@@ -52,6 +52,12 @@ namespace Mylti.Domain
         /// <summary>When true, the brand words of user vehicles may appear in titles, narration and cards.</summary>
         public static bool RealBrandsAllowed;
 
+        /// <summary>Which cast the episode writers pick from.</summary>
+        public enum CastMode { Real, Toons, Mixed }
+        public static CastMode Cast = CastMode.Real;
+
+        public static bool IsToon(VehicleDefinition d) => d != null && d.BodyStyle == "toon";
+
         public static void RegisterUser(VehicleDefinition d)
         {
             if (d == null || string.IsNullOrEmpty(d.Id)) return;
@@ -70,7 +76,18 @@ namespace Mylti.Domain
             get
             {
                 var user = all.FindAll(x => x.IsUserModel);
-                return user.Count >= 2 ? user : (IReadOnlyList<VehicleDefinition>)all;
+                var toons = all.FindAll(IsToon);
+                var generic = all.FindAll(x => !x.IsUserModel && !IsToon(x));
+                switch (Cast)
+                {
+                    case CastMode.Toons: return toons;
+                    case CastMode.Mixed:
+                        var mix = new List<VehicleDefinition>(toons);
+                        mix.AddRange(user.Count >= 1 ? user : generic);
+                        return mix;
+                    default:
+                        return user.Count >= 2 ? user : generic;
+                }
             }
         }
 
@@ -135,6 +152,11 @@ namespace Mylti.Domain
                 SuspensionDistance = 0.35f, AntiRoll = 22000, AirStability = 0.45f, Downforce = 1.0f
             },
         };
+
+        static VehicleCatalog()
+        {
+            foreach (var t in ToonCars.All) all.Add(ToonCars.Definition(t)); // MYLTI Toons (original cartoon cast)
+        }
 
         public static IReadOnlyList<VehicleDefinition> All => all;
 

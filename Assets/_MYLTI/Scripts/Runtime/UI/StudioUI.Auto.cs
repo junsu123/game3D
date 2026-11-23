@@ -164,6 +164,18 @@ namespace Mylti
                 GUILayout.Label("Chỉ dùng nhạc bạn có quyền dùng trên YouTube — ví dụ tải từ YouTube Studio ▸ Audio Library (miễn phí, không bị Content ID).", small);
                 GUILayout.EndHorizontal();
             }
+            // ---------------------------------------------------- Cast
+            GUILayout.Label("Dàn xe trong video tự động:", small);
+            GUILayout.BeginHorizontal();
+            string cast = s.VehicleCast;
+            if (GUILayout.Toggle(cast == "toons", " 🚗😀 Xe hoạt hình MYLTI Toons", GUILayout.Width(230))) cast = "toons";
+            if (GUILayout.Toggle(cast == "real", " Xe thật / xe mẫu", GUILayout.Width(150))) cast = "real";
+            if (GUILayout.Toggle(cast == "mix", " Trộn cả hai", GUILayout.Width(120))) cast = "mix";
+            GUILayout.EndHorizontal();
+            if (cast != s.VehicleCast) { s.VehicleCast = cast; VehicleCatalog.Cast = s.CastMode; }
+            if (s.VehicleCast != "real")
+                GUILayout.Label("MYLTI Toons = 6 xe hoạt hình do kênh tự thiết kế, không logo/không hãng: Zippy, Bruno, Duchess, Turbo Tito, Big Bao, Rumble. Mắt là đèn pha (chớp mắt, nhìn camera, trợn mắt khi bay, nhăn mặt khi đâm, cười khi đáp), miệng trên cản trước, thân xe nhún kiểu hoạt hình.", small);
+
             // ---------------------------------------------------- Crowd
             bool crowdOn = GUILayout.Toggle(s.CrowdEnabled, " Khán giả hoạt hình: người thật đứng trên khán đài & sau hàng rào, nhìn theo xe, vỗ tay, giơ tay reo hò, nhảy lên");
             if (crowdOn != s.CrowdEnabled) { s.CrowdEnabled = crowdOn; CrowdDirector.Enabled = crowdOn; app.Crowd?.Repopulate(); }
