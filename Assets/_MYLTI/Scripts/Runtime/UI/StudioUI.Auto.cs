@@ -146,6 +146,9 @@ namespace Mylti
             GUILayout.Label("Chữ trong video", h2);
             s.ShowNameplates = GUILayout.Toggle(s.ShowNameplates, " Tên xe + tốc độ (km/h) trên đầu xe");
             Nameplate.Enabled = s.ShowNameplates;
+            if (s.ShowNameplates) { s.NameplateSize = Slider("Cỡ chữ tên xe / tốc độ", s.NameplateSize, 0.6f, 1.6f, "0.0"); Nameplate.Size = s.NameplateSize; }
+            s.HandheldCamera = Slider("Rung tay máy quay (0 = chân máy cố định)", s.HandheldCamera, 0f, 1.5f, "0.0");
+            if (app.Cam != null) app.Cam.HandheldAmount = s.HandheldCamera;
             s.BurnTextCards = GUILayout.Toggle(s.BurnTextCards, " Tiêu đề hook đầu video, giới thiệu từng thử thách, câu gây tò mò, kết quả vòng");
             GUILayout.Label("Câu hook chỉ “nhá” những gì THẬT SỰ xảy ra ở cảnh sau (lấy từ kết quả đã quay), không bao giờ lộ người thắng trước. Có Claude key thì Claude viết lại cho cuốn hơn (vẫn bị kiểm tra).", small);
 

@@ -8,7 +8,7 @@ namespace Mylti
     public enum GameKey
     {
         Throttle, Reverse, SteerLeft, SteerRight, Brake, Reset,
-        Cam1, Cam2, Cam3, Cam4, Cam5, Cam6, Cam7, Cam8, CamAuto,
+        Cam1, Cam2, Cam3, Cam4, Cam5, Cam6, Cam7, Cam8, Cam9, CamAuto,
         ToggleHud, ToggleCreator, Pause, FreeUp, FreeDown, FreeFast
     }
 
@@ -73,6 +73,7 @@ namespace Mylti
                 case GameKey.Cam6: return kb.digit6Key.wasPressedThisFrame;
                 case GameKey.Cam7: return kb.digit7Key.wasPressedThisFrame;
                 case GameKey.Cam8: return kb.digit8Key.wasPressedThisFrame;
+                case GameKey.Cam9: return kb.digit9Key.wasPressedThisFrame;
                 case GameKey.CamAuto: return kb.digit0Key.wasPressedThisFrame;
                 case GameKey.ToggleHud: return kb.hKey.wasPressedThisFrame;
                 case GameKey.ToggleCreator: return kb.f1Key.wasPressedThisFrame;
@@ -91,6 +92,7 @@ namespace Mylti
                 case GameKey.Cam6: return Input.GetKeyDown(KeyCode.Alpha6);
                 case GameKey.Cam7: return Input.GetKeyDown(KeyCode.Alpha7);
                 case GameKey.Cam8: return Input.GetKeyDown(KeyCode.Alpha8);
+                case GameKey.Cam9: return Input.GetKeyDown(KeyCode.Alpha9);
                 case GameKey.CamAuto: return Input.GetKeyDown(KeyCode.Alpha0);
                 case GameKey.ToggleHud: return Input.GetKeyDown(KeyCode.H);
                 case GameKey.ToggleCreator: return Input.GetKeyDown(KeyCode.F1);

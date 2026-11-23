@@ -367,7 +367,7 @@ namespace Mylti
             GUILayout.BeginHorizontal();
             GUILayout.Label("FPS", label, GUILayout.Width(160));
             if (GUILayout.Toggle(s.CaptureFps == 30, " 30", GUILayout.Width(60))) s.CaptureFps = 30;
-            if (GUILayout.Toggle(s.CaptureFps == 60, " 60 (nếu máy đủ mạnh)", GUILayout.Width(200))) s.CaptureFps = 60;
+            if (GUILayout.Toggle(s.CaptureFps == 60, " 60 (mượt hơn — khuyên dùng; chỉ quay lâu hơn)", GUILayout.Width(200))) s.CaptureFps = 60;
             GUILayout.EndHorizontal();
 
             if (s.Backend == CaptureBackend.ObsWebSocket || s.Backend == CaptureBackend.ObsManual)

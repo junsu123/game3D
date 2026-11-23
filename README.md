@@ -4,7 +4,7 @@ Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:
 
 > **Trạng thái kiểm thử (trung thực):**
 > - ✅ Toàn bộ 76 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder, nhánh nạp mẫu xe .glb (glTFast) và khán giả có khung xương (SkinnedMeshRenderer, Playables).
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **65/65 test** chạy đạt bằng .NET 8 (thêm: khán giả — lưới người hợp lệ, đội siêu anh hùng tự sáng tạo, tư thế vỗ tay/giơ tay, cảm xúc đám đông theo sự kiện, tiếng reo hò/vỗ tay; vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **68/68 test** chạy đạt bằng .NET 8 (thêm: khán giả — lưới người hợp lệ, đội siêu anh hùng tự sáng tạo, tư thế vỗ tay/giơ tay, cảm xúc đám đông theo sự kiện, tiếng reo hò/vỗ tay; vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
 > - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows, chưa tải video thật lên YouTube, chưa nạp thử mẫu xe .glb thật, chưa xem móp méo/HDRI/khán giả chuyển động trên màn hình** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt; hình khán giả/siêu anh hùng đã được dựng thử bằng trình vẽ phần mềm để kiểm tra dáng và tư thế. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
@@ -95,6 +95,16 @@ Tab **📅 Lịch & Đăng**:
 - Thanh *Tỉ lệ khán giả hoá trang* chia đều cho cả hai đội. Đây là khán giả ít đa giác nhìn từ xa — không đạt độ chi tiết như ảnh quảng cáo game; muốn cận cảnh đẹp như vậy cần mô hình 3D chất lượng cao có giấy phép thương mại (bỏ vào Resources/Crowd).
 - Nếu kênh nhắm tới trẻ em: bật **“Video dành cho trẻ em (Made for Kids)”** ở tab 📅 Lịch & Đăng (bạn tự khai báo theo luật COPPA).
 
+## 🎬 Quay dựng kiểu truyền hình đua xe
+
+- **Ống kính tele bên đường** (như camera F1/MotoGP): máy đặt xa đường băng, tự zoom sao cho **xe chiếm ~45 % bề ngang khung hình** dù xe ở gần hay xa; tele còn “nén” khán đài phía sau nên **khán giả trông to và đông**. Mỗi góc máy tự tính độ zoom theo kích thước xe (xe tải/bus tự lùi khung).
+- **Máy có người vận hành**: vị trí, điểm nhìn và zoom đều có quán tính (giảm chấn), máy **nhìn hơi trước mũi xe** (chừa khoảng trống phía trước), không bao giờ giật theo từng khung. Rung tay máy rất nhẹ và **rung va chạm dùng nhiễu Perlin mượt**, tự giảm khi ống kính tele (chỉnh được, 0 = chân máy cố định).
+- **Quy tắc dựng**: máy bên đường luôn ở cùng một phía (quy tắc 180°); hai góc giống nhau thì **lướt máy mượt 1–1.4 s** thay vì cắt (tránh “jump cut”, quy tắc 30°); vào khoảnh khắc lớn (lên dốc, tiếp đất, đâm tường) thì **cắt theo hành động**; mỗi góc giữ tối thiểu 2.2 s; vào góc quay vòng thì bắt đầu đúng từ vị trí máy đang đứng nên không bị khựng.
+- **Cắt cảnh khán giả**: sau cú đáp/va chạm ấn tượng và khi công bố kết quả vòng, máy cắt sang **hàng khán giả đầu đang reo hò/vỗ tay** (cận vài người, đẩy máy chậm vào) rồi quay lại xe — giống truyền hình thể thao.
+- **Tên xe + tốc độ to hơn ~50 %** và giữ cùng cỡ trên màn hình với mọi ống kính; thanh *Cỡ chữ tên xe / tốc độ* trong tab ▶ Auto Episode.
+- **Mặc định quay 60 khung/giây** (mượt hơn trên YouTube; vì quay theo bước cố định nên máy yếu chỉ mất thời gian quay lâu hơn, video không bị giật). Có thể chọn lại 30 ở tab Video Capture.
+- Phím: **9** = góc khán giả.
+
 ## Đồ hoạ
 
 - **Xe**: thân xe bo tròn dựng thủ tục (loft các mặt cắt superellipse) — xe thể thao có kính bong bóng, sọc đua, cánh gió; SUV có giá nóc; xe tải có cabin + thùng hàng; mâm 5 chấu, đèn phát sáng. Va chạm vẫn dùng hộp đơn giản (ổn định).
@@ -126,7 +136,7 @@ Không cần mạng, tài khoản hay API trả phí. Dữ liệu người dùng
 |---|---|
 | Sandbox | Tab **Thử thách** chỉnh dốc/góc/chướng ngại → **Start**. Tab **Xe** bật/tắt 3 xe, màu, AI/Manual. |
 | Lái tay | Chế độ lái = Manual → **W/S** (↑/↓) ga-lùi, **A/D** lái, **Space** phanh, **R** reset. |
-| Camera | **1** Chase · **2** Side · **3** Front/Lip · **4** Impact · **5** Wide · **6** Top · **7** Orbit · **8** Free (chuột phải + WASD, Q/E) · **0** Auto |
+| Camera | **1** Chase · **2** Side (tele) · **3** Front/Lip · **4** Impact (tele) · **5** Wide · **6** Top · **7** Orbit · **8** Free (chuột phải + WASD, Q/E) · **9** Khán giả · **0** Auto |
 | Concept Lab | Chọn series → **Sinh 3 concept** → chọn 1 (sửa câu hỏi/working title nếu muốn) → **Generate Run Plan**. |
 | 10-Min Director | Xem/sửa kế hoạch 10:00 (độ cao, góc, tốc độ, chướng ngại, luật từng vòng) → **Start & Capture**. |
 | Video Capture | Chọn **Unity Recorder** (Editor), **OBS WebSocket** (khuyên dùng cho bản build), **OBS thủ công** hoặc **Không ghi**. |

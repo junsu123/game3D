@@ -339,7 +339,8 @@ namespace Mylti
 
             var winnerVc = rr.WinnerVehicleId != null && Session.Vehicles.TryGetValue(rr.WinnerVehicleId, out var w) ? w : null;
             Cam.FocusOverride = winnerVc != null ? new List<Transform> { winnerVc.transform } : Session.Vehicles.Values.Select(v => v.transform).ToList();
-            Cam.Forced = Shot.Orbit;
+            bool crowdCut = Cam.Crowd != null && Cam.Crowd.Count > 0;
+            Cam.Forced = crowdCut ? Shot.CrowdReaction : Shot.Orbit; // applause cut-away first, then the winner
             Cam.Snap();
             string head = isFinal ? L("FINAL RESULT", "KẾT QUẢ CHUNG KẾT") : L($"ROUND {spec.Index} RESULT", $"KẾT QUẢ VÒNG {spec.Index}");
             string sub = winnerVc != null ? L($"{winnerVc.Def.DisplayName(Lang)} wins the round", $"{winnerVc.Def.DisplayName(Lang)} thắng vòng này")
@@ -347,6 +348,12 @@ namespace Mylti
             Overlay.ShowCard(head, sub, rr.Explanation, isFinal ? new Color(1f, 0.3f, 0.2f) : (Color?)null);
             Log.BeginSegment(SegmentKind.Card, head, "Orbit");
             double hold = Math.Max(4.0, Math.Min(8.0, Remaining(deadline)));
+            if (crowdCut)
+            {
+                yield return WaitProgram(2.2);
+                Cam.Forced = Shot.Orbit;
+                hold -= 2.2;
+            }
             yield return WaitProgram(hold);
             Overlay.HideCard();
             Log.EndSegment();
@@ -370,14 +377,21 @@ namespace Mylti
                 while (!abortRequested && Session.Running) yield return null;
                 EndLive();
 
-                // mini result over an orbit of the vehicle(s)
+                // mini result: after a dramatic attempt a short crowd cut-away, then a slow orbit of the vehicle(s)
                 Cam.FocusOverride = trackers.Select(t => t.Vehicle.transform).ToList();
-                Cam.Forced = Shot.Orbit;
+                bool drama = trackers.Any(t => t.Rec.Outcome == AttemptOutcome.Rollover || t.Rec.Outcome == AttemptOutcome.Crashed || t.Rec.Outcome == AttemptOutcome.FellOff || (t.Rec.DamagePercent ?? 0) >= 40);
+                bool cutAway = drama && Cam.Crowd != null && Cam.Crowd.Count > 0;
+                Cam.Forced = cutAway ? Shot.CrowdReaction : Shot.Orbit;
                 Cam.Snap();
                 var lines = trackers.Select(t => OutcomeText(t.Rec)).ToList();
                 Overlay.LowerThird(lines[0], lines.Count > 1 ? string.Join("   ·   ", lines.Skip(1)) : "", MiniResultSeconds);
                 Log.BeginSegment(SegmentKind.Card, "Attempt result", "Orbit");
-                yield return WaitProgram(MiniResultSeconds);
+                if (cutAway)
+                {
+                    yield return WaitProgram(1.4);
+                    Cam.Forced = Shot.Orbit;
+                }
+                yield return WaitProgram(cutAway ? MiniResultSeconds - 0.2 : MiniResultSeconds);
                 Log.EndSegment();
                 Cam.Forced = null;
                 Cam.FocusOverride = null;

@@ -24,6 +24,8 @@ namespace Mylti.Domain
         public string ElevenLabsModel = "eleven_multilingual_v2";
         public bool BurnTextCards = true;                               // intro / hook / result text in the final MP4
         public bool ShowNameplates = true;                              // name + speed above each vehicle
+        public float NameplateSize = 1f;                                // 0.6 … 1.6
+        public float HandheldCamera = 1f;                               // 0 = locked tripod, 1 = subtle operator drift
         public bool AllowRealBrands = true;                             // owner's real car models may be named by brand
         public float DamageStrength = 1f;                               // body deformation multiplier
         public bool MusicEnabled = true;                                // music files from <data>/Music
@@ -45,7 +47,7 @@ namespace Mylti.Domain
         public bool RememberObsPassword = false;
         public string ObsPassword = "";           // only persisted when RememberObsPassword = true
         public string ObsRecordingFolder = "";    // for ObsManual auto-detection
-        public int CaptureFps = 30;
+        public int CaptureFps = 60;   // offline fixed-step capture: 60 fps = smoother motion on YouTube, only slower to render
         public bool ShowScoreboardInVideo = false;   // clean picture: no numbers on screen
         public bool ShowCardsInVideo = false;
         public bool EnableAudio = true;
@@ -70,7 +72,7 @@ namespace Mylti.Domain
                 .Prop("googleTtsKey", RememberApiKeys ? GoogleTtsKey : "")
                 .Prop("elevenLabsKey", RememberApiKeys ? ElevenLabsKey : "").Prop("elevenLabsVoiceId", ElevenLabsVoiceId)
                 .Prop("elevenLabsModel", ElevenLabsModel).Prop("kokoroVoice", KokoroVoice)
-                .Prop("burnTextCards", BurnTextCards).Prop("showNameplates", ShowNameplates)
+                .Prop("burnTextCards", BurnTextCards).Prop("showNameplates", ShowNameplates).Prop("nameplateSize", NameplateSize).Prop("handheldCamera", HandheldCamera)
                 .Prop("allowRealBrands", AllowRealBrands).Prop("damageStrength", DamageStrength).Prop("musicEnabled", MusicEnabled)
                 .Prop("musicVolume", MusicVolume).Prop("useHdriSky", UseHdriSky).Prop("hdriId", HdriId)
                 .Prop("crowdEnabled", CrowdEnabled).Prop("crowdDensity", CrowdDensity).Prop("crowdVolume", CrowdVolume).Prop("crowdHeroShare", CrowdHeroShare)
@@ -92,7 +94,7 @@ namespace Mylti.Domain
                 s.RememberObsPassword = MiniJson.GetBool(o, "rememberObsPassword", false);
                 s.ObsPassword = s.RememberObsPassword ? MiniJson.GetString(o, "obsPassword", "") : "";
                 s.ObsRecordingFolder = MiniJson.GetString(o, "obsRecordingFolder", "");
-                s.CaptureFps = MiniJson.GetInt(o, "captureFps", 30) == 60 ? 60 : 30;
+                s.CaptureFps = MiniJson.GetInt(o, "captureFps", 60) == 30 ? 30 : 60;
                 s.EnableAudio = MiniJson.GetBool(o, "enableAudio", true);
                 s.DraftDuration = MiniJson.GetBool(o, "draftDuration", false);
                 s.Language = ScenarioConfig.ParseEnum(MiniJson.GetString(o, "language"), s.Language);
@@ -111,6 +113,8 @@ namespace Mylti.Domain
                 s.ElevenLabsModel = MiniJson.GetString(o, "elevenLabsModel", "eleven_multilingual_v2");
                 s.BurnTextCards = MiniJson.GetBool(o, "burnTextCards", true);
                 s.ShowNameplates = MiniJson.GetBool(o, "showNameplates", true);
+                s.NameplateSize = (float)Math.Max(0.6, Math.Min(1.6, MiniJson.GetDouble(o, "nameplateSize", 1)));
+                s.HandheldCamera = (float)Math.Max(0, Math.Min(1.5, MiniJson.GetDouble(o, "handheldCamera", 1)));
                 s.AllowRealBrands = MiniJson.GetBool(o, "allowRealBrands", true);
                 s.DamageStrength = (float)Math.Max(0, Math.Min(3, MiniJson.GetDouble(o, "damageStrength", 1)));
                 s.MusicEnabled = MiniJson.GetBool(o, "musicEnabled", true);

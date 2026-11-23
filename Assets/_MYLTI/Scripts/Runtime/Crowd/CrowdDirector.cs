@@ -42,6 +42,7 @@ namespace Mylti
             public Vector3 HipBase;
             public CrowdPose.Style Style;
             public float Phase, Rate, Responsive, Excite;
+            public int Priority;
             // real character
             public Animator Animator;
             public PlayableGraph Graph;
@@ -111,6 +112,7 @@ namespace Mylti
                     Rate = 0.9f + (float)rng.NextDouble() * 0.25f,
                     Responsive = 0.6f + (float)rng.NextDouble() * 0.4f,
                     Excite = CrowdMood.Base,
+                    Priority = s.Priority,
                 };
                 var rot = Quaternion.Euler(0, s.Yaw + (float)(rng.NextDouble() - 0.5) * 24f, 0);
                 if (canReal && real < MaxRealFans && s.Priority >= 2)
@@ -168,6 +170,31 @@ namespace Mylti
             fan.Animator = anim;
             fan.Graph = graph;
             fan.Mixer = mixer;
+            return true;
+        }
+
+        /// <summary>
+        /// A cut-away of the front-row fans nearest to 'near': camera in front of them at chest height, slightly
+        /// off-axis (3/4 view), framing a handful of people. Returns false when there is no crowd.
+        /// </summary>
+        public bool ReactionShot(Vector3 near, out Vector3 camPos, out Vector3 look)
+        {
+            camPos = look = Vector3.zero;
+            Fan best = null;
+            float bestD = float.MaxValue;
+            foreach (var f in fans)
+            {
+                if (f.Root == null || f.Priority < 2) continue;
+                float d = (f.Root.position - near).sqrMagnitude * (f.Root.position.x > 0 ? 1f : 1.6f); // prefer our camera side
+                if (d < bestD) { bestD = d; best = f; }
+            }
+            if (best == null) return false;
+            Vector3 p = best.Root.position, fwd = best.Root.forward;
+            fwd.y = 0;
+            fwd = fwd.sqrMagnitude > 0.01f ? fwd.normalized : Vector3.forward;
+            Vector3 right = Vector3.Cross(Vector3.up, fwd);
+            camPos = p + fwd * 7.5f + right * 2.2f + Vector3.up * 1.75f;
+            look = p + Vector3.up * 1.45f + fwd * 0.4f;
             return true;
         }
 

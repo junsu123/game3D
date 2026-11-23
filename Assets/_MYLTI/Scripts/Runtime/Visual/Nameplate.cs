@@ -10,6 +10,7 @@ namespace Mylti
     public sealed class Nameplate : MonoBehaviour
     {
         public static bool Enabled = true;
+        public static float Size = 1f; // user setting (0.6 … 1.6)
         public VehicleController Vehicle;
         public ChallengeSession Session;
 
@@ -57,13 +58,14 @@ namespace Mylti
             if (root.gameObject.activeSelf != active) root.gameObject.SetActive(active);
             if (!active) return;
 
-            float lift = Vehicle.Def.Height + 1.4f;
+            float lift = Vehicle.Def.Height + 0.9f;
             Vector3 pos = Vehicle.transform.position + Vector3.up * lift;
             float dist = Vector3.Distance(cam.transform.position, pos);
-            if (dist > 260f || Vector3.Dot(cam.transform.forward, pos - cam.transform.position) < 0f) { root.gameObject.SetActive(false); return; }
+            if (dist > 600f || Vector3.Dot(cam.transform.forward, pos - cam.transform.position) < 0f) { root.gameObject.SetActive(false); return; }
             root.position = pos;
             root.rotation = Quaternion.LookRotation(pos - cam.transform.position, Vector3.up);
-            float scale = Mathf.Clamp(dist * 0.055f, 0.6f, 9f) * (cam.fieldOfView / 55f);
+            // constant on-screen size for any lens (telephoto included): ~6 % of the frame height for the speed line
+            float scale = Mathf.Clamp(dist * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * 0.16f * Size, 0.35f, 40f);
             root.localScale = Vector3.one * scale;
 
             bool replay = Vehicle.ReplayMode;

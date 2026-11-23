@@ -121,6 +121,8 @@ namespace Mylti
             Ffmpeg = new FfmpegTool(Path.Combine(DataRoot, "ffmpeg"), Settings.FfmpegPath);
             TtsFactory.KokoroDir = Path.Combine(DataRoot, "tts");
             Nameplate.Enabled = Settings.ShowNameplates;
+            Nameplate.Size = Settings.NameplateSize;
+            Cam.HandheldAmount = Settings.HandheldCamera;
             Recorder = gameObject.AddComponent<BuiltInRecorder>();
             Recorder.Cam = Cam.GetComponent<Camera>();
             Recorder.Ffmpeg = Ffmpeg;
@@ -162,6 +164,7 @@ namespace Mylti
             Crowd.Session = Session;
             Crowd.Attach(Log);
             Builder.Crowd = Crowd;
+            Cam.Crowd = Crowd;
             ApplyQuality(Settings.Quality);
             VehicleAudio.MasterVolume = Settings.EnableAudio ? 0.8f : 0f;
         }
