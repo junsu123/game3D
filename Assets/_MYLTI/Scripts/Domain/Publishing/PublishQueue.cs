@@ -111,6 +111,7 @@ namespace Mylti.Domain
         public bool UploadCaptions = true;
         public bool UploadThumbnail = true;
         public bool DeclareSyntheticMedia = false; // game footage + generic TTS voice: YouTube does not require the label
+        public bool MadeForKids = false;           // owner's legal call (COPPA): true if the videos are aimed at children
         public string CategoryId = "20";           // 20 = Gaming, 2 = Autos & Vehicles
         public string GoogleClientId = "", GoogleClientSecret = "";
         public List<Market> Markets = Market.Defaults();
@@ -121,7 +122,7 @@ namespace Mylti.Domain
              .Prop("reviewWindowHours", ReviewWindowHours).Prop("bufferEpisodes", BufferEpisodes).Prop("maxProductionsPerDay", MaxProductionsPerDay)
              .Prop("productionHourLocal", ProductionHourLocal).Prop("wakeComputer", WakeComputer).Prop("autoPublish", AutoPublish)
              .Prop("notifySubscribers", NotifySubscribers).Prop("translateMetadata", TranslateMetadata).Prop("uploadCaptions", UploadCaptions)
-             .Prop("uploadThumbnail", UploadThumbnail).Prop("declareSyntheticMedia", DeclareSyntheticMedia).Prop("categoryId", CategoryId)
+             .Prop("uploadThumbnail", UploadThumbnail).Prop("declareSyntheticMedia", DeclareSyntheticMedia).Prop("madeForKids", MadeForKids).Prop("categoryId", CategoryId)
              .Prop("googleClientId", GoogleClientId).Prop("googleClientSecret", GoogleClientSecret);
             w.Key("marketWeights").BeginObject();
             foreach (var m in Markets) w.Prop(m.Code, Math.Round(m.Weight, 4));
@@ -148,6 +149,7 @@ namespace Mylti.Domain
                 s.UploadCaptions = MiniJson.GetBool(o, "uploadCaptions", true);
                 s.UploadThumbnail = MiniJson.GetBool(o, "uploadThumbnail", true);
                 s.DeclareSyntheticMedia = MiniJson.GetBool(o, "declareSyntheticMedia", false);
+                s.MadeForKids = MiniJson.GetBool(o, "madeForKids", false);
                 s.CategoryId = MiniJson.GetString(o, "categoryId", "20");
                 s.GoogleClientId = MiniJson.GetString(o, "googleClientId", "");
                 s.GoogleClientSecret = MiniJson.GetString(o, "googleClientSecret", "");

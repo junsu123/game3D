@@ -107,7 +107,8 @@ namespace Mylti
             if (GUILayout.Toggle(ps.CategoryId == "2", "Autos & Vehicles", GUI.skin.button, GUILayout.Width(160))) ps.CategoryId = "2";
             GUILayout.EndHorizontal();
             ps.DeclareSyntheticMedia = GUILayout.Toggle(ps.DeclareSyntheticMedia, " Gắn nhãn “nội dung thay đổi/tổng hợp” (YouTube không bắt buộc cho cảnh game + giọng đọc AI chung chung)");
-            GUILayout.Label("Không dành cho trẻ em (madeForKids = false) được đặt tự động.", small);
+            ps.MadeForKids = GUILayout.Toggle(ps.MadeForKids, " Video dành cho trẻ em (Made for Kids)");
+            GUILayout.Label("Bạn phải tự khai báo đúng theo luật COPPA. Nếu khán giả chính là trẻ em (ví dụ vì nội dung siêu anh hùng nhắm tới các bạn nhỏ) thì bật lên — khi đó YouTube tắt bình luận và quảng cáo cá nhân hoá. Nếu nhắm tới người lớn/mọi lứa tuổi thì để tắt.", small);
 
             // ---------------------------------------------------- autopilot
             GUILayout.Space(8);

@@ -413,6 +413,7 @@ namespace Mylti
                                            : L("FINAL STANDINGS — NO OVERALL WINNER", "BẢNG XẾP HẠNG — KHÔNG CÓ XE THẮNG CHUNG CUỘC");
             Overlay.ShowStandings(title, rows);
             Log.BeginSegment(SegmentKind.Summary, "Final standings", "Orbit");
+            Log.Log("FinalStandings", 0, 0, overall, null);
             yield return WaitProgram(Math.Max(5.0, Math.Min(8.0, target - Clock.Time - 6.0)));
             Overlay.HideStandings();
             Log.EndSegment();

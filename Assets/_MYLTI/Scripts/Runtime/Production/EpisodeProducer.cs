@@ -274,6 +274,8 @@ namespace Mylti
             var segments = run.Segments.ToList();
             var lineList = Narration.Lines.ToList();
             bool sfx = S.SoundDesignEnabled;
+            bool crowd = S.CrowdEnabled && S.CrowdVolume > 0.01f;
+            float crowdGain = Mathf.Clamp01(S.CrowdVolume);
             var mixTask = Task.Run(() =>
             {
                 var st = new Soundtrack(duration);
@@ -294,6 +296,12 @@ namespace Mylti
                         st.AddCrash(a.LandingProgramTime.Value, (float)(a.DamagePercent.Value / 80.0), a.GlassBroken);
                     foreach (var s in segments.Where(x => x.Kind == SegmentKind.Replay)) st.AddWind(s.Start, s.End, 0.05f);
                 }
+                if (crowd)
+                {
+                    // the same excitement curve that animated the spectators → cheering/applause in sync with the picture
+                    CrowdMood.Timeline(events, duration, 0.05, out var lv, out var ap, out var gs);
+                    st.AddCrowd(lv, ap, gs, 0.05, crowdGain);
+                }
                 var ordered = lineList.OrderBy(l => l.Start).ToList();
                 for (int i = 0; i < ordered.Count; i++)
                 {
@@ -306,7 +314,7 @@ namespace Mylti
             });
             while (!mixTask.IsCompleted) yield return null;
             if (mixTask.IsFaulted) { Set(aN, StepState.Failed, mixTask.Exception.GetBaseException().Message); yield break; }
-            Set(aN, StepState.Done, (sfx ? "Lời bình + tiếng động cơ/gió/va chạm tổng hợp" : "Chỉ lời bình") + (musicName != null ? " + nhạc: " + musicName : ""));
+            Set(aN, StepState.Done, (sfx ? "Lời bình + tiếng động cơ/gió/va chạm tổng hợp" : "Chỉ lời bình") + (crowd ? " + khán giả reo hò/vỗ tay" : "") + (musicName != null ? " + nhạc: " + musicName : ""));
 
             // ---------------------------------------------------- 7. final mp4
             const string fN = "7. Xuất MP4 cuối";

@@ -161,6 +161,23 @@ namespace Mylti
                 GUILayout.Label("Chỉ dùng nhạc bạn có quyền dùng trên YouTube — ví dụ tải từ YouTube Studio ▸ Audio Library (miễn phí, không bị Content ID).", small);
                 GUILayout.EndHorizontal();
             }
+            // ---------------------------------------------------- Crowd
+            bool crowdOn = GUILayout.Toggle(s.CrowdEnabled, " Khán giả hoạt hình: người thật đứng trên khán đài & sau hàng rào, nhìn theo xe, vỗ tay, giơ tay reo hò, nhảy lên");
+            if (crowdOn != s.CrowdEnabled) { s.CrowdEnabled = crowdOn; CrowdDirector.Enabled = crowdOn; app.Crowd?.Repopulate(); }
+            if (s.CrowdEnabled)
+            {
+                float dens = Slider("Số khán giả (máy yếu → kéo nhỏ)", s.CrowdDensity, 0.3f, 1.5f, "0.0");
+                if (Mathf.Abs(dens - s.CrowdDensity) > 0.001f) { s.CrowdDensity = dens; CrowdDirector.Density = dens; }
+                float hs = Slider("Tỉ lệ khán giả mặc đồ siêu anh hùng MYLTI Squad", s.CrowdHeroShare, 0f, 1f, "0.00");
+                if (Mathf.Abs(hs - s.CrowdHeroShare) > 0.001f) { s.CrowdHeroShare = hs; CrowdDirector.HeroShare = hs; }
+                GUILayout.Label("MYLTI Squad = 7 siêu anh hùng do kênh tự sáng tạo (Turbo Ranger, Nova Spark, Gear Guardian, Comet Kid, Rocket Rex, Pixel Knight, Aurora Dash) — không dựa trên nhân vật có bản quyền nào.", small);
+                s.CrowdVolume = Slider("Tiếng reo hò / vỗ tay trong video", s.CrowdVolume, 0f, 1f, "0.00");
+                GUILayout.BeginHorizontal();
+                if (app.Crowd != null) GUILayout.Label($"Đang có {app.Crowd.Count} khán giả ({app.Crowd.RealCount} nhân vật 3D riêng). Nhân vật riêng: {app.Crowd.RealCharactersSummary()}", small);
+                if (GUILayout.Button("Dựng lại khán đài", GUILayout.Width(160))) app.Crowd.Repopulate();
+                GUILayout.EndHorizontal();
+                GUILayout.Label("Muốn người giống thật hơn: tải nhân vật + động tác (Idle, Clapping, Cheering…) miễn phí từ Mixamo dạng FBX, bỏ vào Assets/_MYLTI/Resources/Crowd — hàng ghế đầu sẽ tự dùng chúng.", small);
+            }
             bool sky = GUILayout.Toggle(s.UseHdriSky, " Bầu trời chụp thật (HDRI miễn phí CC0 từ Poly Haven) + phản chiếu trên thân xe");
             if (sky != s.UseHdriSky) { s.UseHdriSky = sky; if (sky) app.StartCoroutine(app.Sky.Load(app.DataRoot, s.HdriId, app.Msg)); }
             if (s.UseHdriSky)

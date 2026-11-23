@@ -39,6 +39,7 @@ namespace Mylti
         public float FieldEndZ;
         public float HalfFieldWidth = 140f;
         public readonly List<Replayable> Obstacles = new List<Replayable>();
+        public readonly List<CrowdSpot> CrowdSpots = new List<CrowdSpot>(); // where spectators stand (CrowdDirector fills them)
 
         public Vector3 SpawnPoint(int lane) => new Vector3(LaneX[Mathf.Clamp(lane, 0, LaneX.Length - 1)], 0.6f, 6f);
         public bool HasBridge => BridgeStartZ >= 0;
@@ -50,6 +51,7 @@ namespace Mylti
     {
         public const float LaneSpacing = 9f;
         public MapContext Current { get; private set; }
+        public CrowdDirector Crowd;
 
         GameObject root;
         Font font;
@@ -202,6 +204,7 @@ namespace Mylti
             Scenery(ctx, rng, concrete);
             Dressing(ctx, rng);
             Current = ctx;
+            if (Crowd != null) Crowd.Populate(root.transform, ctx.CrowdSpots, seed + spec.Index * 31);
             return ctx;
         }
 
@@ -212,24 +215,7 @@ namespace Mylti
             Color[] shirt = { new Color(0.9f, 0.2f, 0.2f), new Color(0.2f, 0.45f, 0.9f), new Color(0.95f, 0.85f, 0.2f), new Color(0.95f, 0.95f, 0.95f), new Color(0.2f, 0.75f, 0.35f), new Color(0.15f, 0.15f, 0.18f) };
             var shirtMats = new Material[shirt.Length];
             for (int i = 0; i < shirt.Length; i++) shirtMats[i] = MaterialFactory.Get(shirt[i], 0.2f);
-            // spectators on the grandstands (two tiers)
-            for (int sgn = -1; sgn <= 1; sgn += 2)
-            {
-                float x0 = sgn * (side + 42f);
-                for (int g = 0; g < 4; g++)
-                {
-                    float zc = 40f + g * 50f;
-                    if (ctx.HasBridge && zc > ctx.BridgeStartZ - 10 && zc < ctx.BridgeEndZ + 10) continue;
-                    for (int n = 0; n < 60; n++)
-                    {
-                        float z = zc - 14f + (float)rng.NextDouble() * 28f;
-                        int tier = rng.Next(2);
-                        float x = x0 - sgn * (2.5f - tier * 2.5f) + (float)(rng.NextDouble() - 0.5) * 1.5f;
-                        float y = 4.6f + tier * 1.6f;
-                        MaterialFactory.Visual(PrimitiveType.Capsule, root.transform, new Vector3(x, y, z), new Vector3(0.55f, 0.8f, 0.55f), shirtMats[rng.Next(shirtMats.Length)], "Fan");
-                    }
-                }
-            }
+            // (spectators on the grandstands are added in Scenery; the CrowdDirector turns spots into animated people)
             // flags along the runway
             var pole = MaterialFactory.Get(new Color(0.8f, 0.8f, 0.82f), 0.8f, 0.9f);
             for (float z = 20f; z < ctx.RampStartZ - 10f; z += 30f)
@@ -250,6 +236,32 @@ namespace Mylti
                     MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(sgn * (side + 13.5f), 0.25f, z), new Vector3(1.2f, 0.25f, 1.2f), tyreMat, "Tyres");
                     MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(sgn * (side + 13.5f), 0.75f, z), new Vector3(1.2f, 0.25f, 1.2f), tyreMat, "Tyres");
                 }
+            // standing crowd behind the tyre walls — closest to the landings, so they react first and get the real models
+            for (float z = ctx.LipZ + 28f; z < ctx.LipZ + 200f; z += 1.1f)
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                    for (int row = 0; row < 3; row++)
+                    {
+                        if (rng.NextDouble() < 0.22) continue;
+                        float x = sgn * (side + 16f + row * 0.95f) + (float)(rng.NextDouble() - 0.5) * 0.35f;
+                        Spot(ctx, new Vector3(x, 0, z + (float)(rng.NextDouble() - 0.5) * 0.5f), -90f * sgn, row == 0 ? 3 : 2);
+                    }
+            // crash wall / drop pad: a small crowd behind barriers on both sides
+            float hot = ctx.CrashWallZ > 0 ? ctx.CrashWallZ : ctx.DropZ;
+            if (hot > 0)
+            {
+                var fence = MaterialFactory.Get(new Color(0.85f, 0.85f, 0.88f), 0.5f, 0.6f);
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                {
+                    float fx = sgn * (side + 20f);
+                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(fx, 0.55f, hot - 10f), new Vector3(0.12f, 1.1f, 46f), fence, "CrowdFence");
+                    for (float z = hot - 30f; z < hot + 12f; z += 1f)
+                        for (int row = 0; row < 3; row++)
+                        {
+                            if (rng.NextDouble() < 0.25) continue;
+                            Spot(ctx, new Vector3(sgn * (side + 21f + row * 0.95f) + (float)(rng.NextDouble() - 0.5) * 0.3f, 0, z), -90f * sgn, 3);
+                        }
+                }
+            }
             // light towers
             var lamp = MaterialFactory.Get(new Color(1f, 0.97f, 0.88f), 0.9f, 0f, true);
             for (int i = 0; i < 4; i++)
@@ -271,6 +283,9 @@ namespace Mylti
                 MaterialFactory.Visual(PrimitiveType.Sphere, root.transform, c, new Vector3(sz, sz * (0.5f + (float)rng.NextDouble() * 0.4f), sz), hill, "Hill");
             }
         }
+
+        static void Spot(MapContext ctx, Vector3 pos, float yaw, int priority) =>
+            ctx.CrowdSpots.Add(new CrowdSpot { Pos = pos, Yaw = yaw, Priority = priority });
 
         void Ground(float z0, float z1, Material mat)
         {
@@ -427,8 +442,25 @@ namespace Mylti
                 {
                     float z = 40f + i * 50f;
                     if (ctx.HasBridge && z > ctx.BridgeStartZ - 10 && z < ctx.BridgeEndZ + 10) continue;
-                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(x, 2f, z), new Vector3(8f, 4f, 30f), seat, "Grandstand");
-                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(x + s * 2f, 5f, z), new Vector3(4f, 2f, 30f), concrete, "GrandstandTop");
+                    // five stepped tiers rising away from the runway, roof on posts, people standing on every step
+                    const int tiers = 5; const float stepW = 1.5f, stepH = 0.75f;
+                    float inner = x - s * 4f;
+                    for (int k = 0; k < tiers; k++)
+                    {
+                        float cx = inner + s * (stepW * 0.5f + k * stepW);
+                        float top = 0.6f + k * stepH;
+                        MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(cx, top * 0.5f, z), new Vector3(stepW, top, 30f), k % 2 == 0 ? seat : concrete, "Grandstand");
+                        for (float pz = z - 14.4f; pz < z + 14.5f; pz += 0.8f)
+                        {
+                            if (rng.NextDouble() < 0.18) continue;
+                            Spot(ctx, new Vector3(cx + (float)(rng.NextDouble() - 0.5) * 0.25f, top, pz + (float)(rng.NextDouble() - 0.5) * 0.2f), -90f * s, k == 0 ? 2 : 1);
+                        }
+                    }
+                    float back = inner + s * tiers * stepW;
+                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(back + s * 0.2f, 3.4f, z), new Vector3(0.4f, 6.8f, 30f), concrete, "GrandstandBack");
+                    for (int pz = -1; pz <= 1; pz++)
+                        MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(back, 4.2f, z + pz * 14.5f), new Vector3(0.25f, 8.4f, 0.25f), concrete, "RoofPost");
+                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(inner + s * tiers * stepW * 0.5f, 8.5f, z), new Vector3(tiers * stepW + 1.5f, 0.2f, 30.5f), MaterialFactory.Get(new Color(0.92f, 0.92f, 0.95f), 0.4f), "GrandstandRoof");
                 }
             }
             var trunk = MaterialFactory.Get(new Color(0.35f, 0.24f, 0.14f));

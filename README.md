@@ -80,6 +80,18 @@ Tab **📅 Lịch & Đăng**:
 - **Bầu trời HDRI chụp thật** (Poly Haven, CC0, tự tải vài MB một lần): skybox + ánh sáng môi trường + phản chiếu trên thân xe/kính. Có thể thả file .hdr của bạn vào thư mục **Sky**. Không tải được → dùng bầu trời mặc định.
 - Âm thanh va chạm kim loại + vỡ kính được tổng hợp theo đúng thời điểm và lực va.
 
+## 🦸 Khán giả hoạt hình + đội siêu anh hùng MYLTI Squad
+
+![MYLTI Squad](docs/images/mylti_squad.png)
+
+- **Khán đài 5 bậc có mái** dọc đường băng, **đám đông đứng sau hàng lốp** ở vùng xe đáp, **hàng rào khán giả** cạnh tường va chạm / cần cẩu thả rơi. Khoảng 1.100 người (chỉnh được), mỗi người là một nhân vật 3D có khung xương: tay, chân, đầu cử động thật.
+- **Phản ứng theo đúng sự kiện thật** của lượt chạy: xe vào dốc → xôn xao; cất cánh → giơ tay reo hò, nhảy lên, đấm tay; đáp/đâm → “ồ!”; có kết quả vòng → **vỗ tay rào rào**; bảng xếp hạng cuối → vỗ tay lâu. Mọi người **quay đầu nhìn theo xe**, người đứng xa phản ứng chậm hơn một chút.
+- **MYLTI Squad** — 7 siêu anh hùng **do kênh tự sáng tạo** (không dựa trên nhân vật có bản quyền nào): Turbo Ranger, Nova Spark, Gear Guardian, Comet Kid, Rocket Rex, Pixel Knight, Aurora Dash. Bộ đồ liền thân, mặt nạ, găng, ủng, thắt lưng, áo choàng, biểu tượng ngực riêng; có cả **người lớn và các bạn nhỏ**. Tỉ lệ khán giả mặc đồ siêu anh hùng chỉnh trong tab ▶ Auto Episode (mặc định 60 %).
+- **Tiếng khán giả trong video**: tiếng rì rầm, reo hò (“aaah”), vỗ tay, “ồ” khi va chạm — tổng hợp từ đúng đường cong cảm xúc đã điều khiển khán giả trên hình, nên **tiếng khớp với hình**. Tự nhỏ đi khi có lời bình.
+- **Muốn người giống thật hơn**: tải nhân vật + động tác (Idle, Clapping, Cheering…) miễn phí từ Mixamo dạng FBX, bỏ vào `Assets/_MYLTI/Resources/Crowd` (xem `README_Crowd.txt` trong đó) → hàng đầu tự dùng, phía sau vẫn là khán giả tự tạo cho nhẹ máy.
+- ⚠️ Không dùng mô hình/fan-art của siêu anh hùng có bản quyền (kể cả “đổi màu”) — vẫn bị nhận ra → dễ dính Content ID / khiếu nại.
+- Nếu kênh nhắm tới trẻ em: bật **“Video dành cho trẻ em (Made for Kids)”** ở tab 📅 Lịch & Đăng (bạn tự khai báo theo luật COPPA).
+
 ## Đồ hoạ
 
 - **Xe**: thân xe bo tròn dựng thủ tục (loft các mặt cắt superellipse) — xe thể thao có kính bong bóng, sọc đua, cánh gió; SUV có giá nóc; xe tải có cabin + thùng hàng; mâm 5 chấu, đèn phát sáng. Va chạm vẫn dùng hộp đơn giản (ổn định).

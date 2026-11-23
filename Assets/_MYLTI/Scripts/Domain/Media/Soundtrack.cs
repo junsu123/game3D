@@ -225,6 +225,102 @@ namespace Mylti.Domain
             }
         }
 
+        /// <summary>
+        /// Live crowd, driven by the same CrowdMood timeline as the animated spectators (so what you hear matches
+        /// what you see): a murmur bed, a cheering roar ("ahh" formants on noise + a chorus of buzzing voices),
+        /// dense applause (a Poisson train of clap transients) and a collective "ooh" on near-misses and crashes.
+        /// Curves are sampled every <paramref name="step"/> seconds of program time, values 0..1.
+        /// </summary>
+        public void AddCrowd(float[] level, float[] applause, float[] gasp, double step, float gain = 0.7f)
+        {
+            if (level == null || level.Length == 0 || gain <= 0f || step <= 0) return;
+            var r = new Random(4321);
+            var ahF1 = new Biquad(Rate, 760, 1.4f); var ahF2 = new Biquad(Rate, 1220, 2.0f); var ahF3 = new Biquad(Rate, 2500, 3f);
+            var ooF1 = new Biquad(Rate, 340, 2.2f); var ooF2 = new Biquad(Rate, 820, 2.8f);
+            var murF = new Biquad(Rate, 480, 0.7f);
+            var clapA = new Biquad(Rate, 1250, 1.1f); var clapB = new Biquad(Rate, 2300, 1.3f); var clapC = new Biquad(Rate, 3800, 1.6f);
+            const int V = 12;
+            var ph = new double[V]; var f0 = new double[V]; var vib = new double[V]; var amp = new float[V]; var ampT = new float[V];
+            for (int v = 0; v < V; v++) { f0[v] = 105 + r.NextDouble() * 170; vib[v] = r.NextDouble() * 6; amp[v] = ampT[v] = (float)r.NextDouble(); ph[v] = r.NextDouble(); }
+            float envA = 0, envB = 0, envC = 0, mur = 0.5f, murT = 0.5f, swell = 1f, swellT = 1f;
+            float clapDecay = (float)Math.Exp(-1.0 / (Rate * 0.011));
+            float perStep = (float)(Rate * step);
+            int n = fx.Length - Rate;
+            for (int i = 0; i < n; i++)
+            {
+                float u = i / perStep;
+                int k = (int)u;
+                float fr = u - k;
+                float Curve(float[] c) => c == null || c.Length == 0 ? 0f : k + 1 < c.Length ? c[k] + (c[k + 1] - c[k]) * fr : c[c.Length - 1];
+                float lv = Curve(level), ap = Math.Min(1f, Curve(applause)), gs = Math.Min(1f, Curve(gasp));
+                float ex = Math.Max(0f, Math.Min(1f, (lv - CrowdMood.Base) / (1f - CrowdMood.Base)));
+                float w = (float)r.NextDouble() * 2f - 1f;
+                float w2 = (float)r.NextDouble() * 2f - 1f;
+
+                // slow random modulation: murmur syllables (~5 Hz) and crowd swells (~0.7 Hz)
+                if (i % (Rate / 5) == 0) murT = 0.25f + (float)r.NextDouble() * 0.75f;
+                if (i % (Rate * 3 / 2) == 0) swellT = 0.75f + (float)r.NextDouble() * 0.35f;
+                mur += (murT - mur) * 0.0006f;
+                swell += (swellT - swell) * 0.00005f;
+
+                // chorus of voices (pitch rises with excitement), each fading in and out on its own
+                float buzz = 0;
+                if (ex > 0.02f || gs > 0.02f)
+                {
+                    double rise = 1 + 0.35 * ex;
+                    for (int v = 0; v < V; v++)
+                    {
+                        vib[v] += 5.5 / Rate;
+                        ph[v] += f0[v] * rise * (1 + 0.025 * Math.Sin(2 * Math.PI * vib[v])) / Rate;
+                        if (ph[v] >= 1) ph[v] -= 1;
+                        if ((i + v * 977) % (Rate / 3) == 0) { ampT[v] = r.NextDouble() < 0.25 ? 0f : (float)r.NextDouble(); if (r.NextDouble() < 0.1) f0[v] = 105 + r.NextDouble() * 170; }
+                        amp[v] += (ampT[v] - amp[v]) * 0.0004f;
+                        buzz += (float)(ph[v] * 2 - 1) * amp[v];
+                    }
+                    buzz /= V;
+                }
+                float src = w * 0.75f + buzz * 0.9f;
+                float roar = ahF1.Process(src) + 0.8f * ahF2.Process(src) + 0.35f * ahF3.Process(w2);
+                float ooh = ooF1.Process(src) + 0.6f * ooF2.Process(src);
+                float murmur = murF.Process(w) * mur;
+
+                // applause: three bands, each an independent stream of clap transients
+                float claps = 30f + 1700f * ap + 260f * ex * ex;
+                float pr = claps / Rate / 3f;
+                if (r.NextDouble() < pr) envA += 0.5f + (float)r.NextDouble();
+                if (r.NextDouble() < pr) envB += 0.5f + (float)r.NextDouble();
+                if (r.NextDouble() < pr) envC += 0.5f + (float)r.NextDouble();
+                envA *= clapDecay; envB *= clapDecay; envC *= clapDecay;
+                float norm = 1f / (float)Math.Sqrt(1 + claps / 3f * 0.011f);
+                float clap = (clapA.Process(w) * envA + clapB.Process(w2) * envB + 0.6f * clapC.Process(w) * envC) * norm;
+                float clapGain = Math.Min(1f, ap + 0.35f * ex * ex + 0.04f);
+
+                float x = 0.10f * murmur
+                        + 1.0f * (float)Math.Pow(ex, 1.3) * swell * roar
+                        + 1.1f * gs * ooh
+                        + 0.15f * clapGain * clap;
+                fx[i] += x * gain;
+            }
+        }
+
+        /// <summary>RBJ band-pass (constant 0 dB peak).</summary>
+        sealed class Biquad
+        {
+            readonly float b0, b2, a1, a2;
+            float x1, x2, y1, y2;
+            public Biquad(int rate, double hz, double q)
+            {
+                double w0 = 2 * Math.PI * hz / rate, alpha = Math.Sin(w0) / (2 * q), a0 = 1 + alpha;
+                b0 = (float)(alpha / a0); b2 = (float)(-alpha / a0); a1 = (float)(-2 * Math.Cos(w0) / a0); a2 = (float)((1 - alpha) / a0);
+            }
+            public float Process(float x)
+            {
+                float y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+                x2 = x1; x1 = x; y2 = y1; y1 = y;
+                return y;
+            }
+        }
+
         /// <summary>Very quiet outdoor bed across the whole program so there is never digital silence.</summary>
         public void AddBed(float gain = 0.012f)
         {

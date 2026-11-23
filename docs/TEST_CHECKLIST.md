@@ -3,7 +3,7 @@
 Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .NET) · 🎮 phải kiểm trong Unity
 
 ## A. Tự động (Window ▸ General ▸ Test Runner ▸ EditMode ▸ Run All)
-✅ 19 test đã chạy đạt bằng .NET 8 ngoài Unity; ☐ chạy lại trong Unity Test Runner.
+✅ 64 test đã chạy đạt bằng .NET 8 ngoài Unity; ☐ chạy lại trong Unity Test Runner.
 
 ## B. Mốc A — vertical slice 🎮
 - ☐ Mở dự án: Console **không lỗi compile** (cảnh báo “reference to non-existent assembly” khi chưa cài Recorder là bình thường).
@@ -52,3 +52,13 @@ Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .N
 - [ ] HDRI tải được (thư mục Sky có `ph_…_2k.hdr`), bầu trời thật, thân xe phản chiếu trời; tắt mạng → vẫn chạy với trời mặc định.
 - [ ] Thả 1 bài nhạc vào Music → video cuối có nhạc, nhỏ đi khi có lời bình.
 - [ ] Bản .exe: mẫu xe không bị màu hồng (shader glTFast được đưa vào build).
+
+## Khán giả hoạt hình + MYLTI Squad (bản 11/2026)
+- [ ] Vào Play: khán đài 5 bậc có người đứng kín, đám đông sau hàng lốp vùng đáp; không còn “viên con nhộng”.
+- [ ] Khi xe chờ: khán giả đứng yên, nhìn xe, thỉnh thoảng vỗ tay nhẹ. Xe cất cánh: tay giơ cao, có người nhảy/đấm tay. Có kết quả vòng: cả đám đông vỗ tay (hai bàn tay chạm nhau trước ngực).
+- [ ] Đầu khán giả quay theo xe; người ở xa phản ứng trễ ~0.5–1 s.
+- [ ] Khoảng 60 % là siêu anh hùng MYLTI Squad (áo choàng, mặt nạ, biểu tượng ngực), có trẻ em; kéo thanh tỉ lệ → “Dựng lại khán đài” → thay đổi.
+- [ ] Không có lỗi da/xương (tay chân không bị kéo dãn, không lơ lửng); bóng đổ đúng.
+- [ ] FPS: Quality Medium vẫn ≥ 60 khi quay; máy yếu kéo “Số khán giả” xuống 0.5.
+- [ ] Video cuối: nghe được rì rầm, reo hò lúc bay, “ồ” lúc va chạm, vỗ tay lúc có kết quả; nhỏ lại khi có lời bình.
+- [ ] (Tuỳ chọn) Thả FBX Mixamo (nhân vật + Idle/Clapping/Cheering) vào Resources/Crowd: dòng trạng thái báo số nhân vật/động tác; hàng đầu dùng nhân vật đó, chuyển động mượt giữa đứng yên ↔ vỗ tay ↔ reo hò.

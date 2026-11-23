@@ -24,6 +24,7 @@ namespace Mylti.Domain
                 AutoPublish = ps.AutoPublish,
                 NotifySubscribers = ps.NotifySubscribers,
                 ContainsSyntheticMedia = ps.DeclareSyntheticMedia,
+                MadeForKids = ps.MadeForKids,
             };
             m.Tags = Tags(run);
             return m;
@@ -121,6 +122,7 @@ Reply JSON only: {""de"":{""title"":""..."",""description"":""...""}, ...}";
                 Title = MiniJson.GetString(o, "title"), Description = MiniJson.GetString(o, "description"),
                 CategoryId = ps.CategoryId, DefaultLanguage = MiniJson.GetString(o, "defaultLanguage", "en"),
                 AutoPublish = ps.AutoPublish, NotifySubscribers = ps.NotifySubscribers, ContainsSyntheticMedia = ps.DeclareSyntheticMedia,
+                MadeForKids = ps.MadeForKids,
             };
             foreach (var t in MiniJson.Arr(MiniJson.Get(o, "tags")) ?? new List<object>()) if (t is string ts) m.Tags.Add(ts);
             var loc = MiniJson.Obj(MiniJson.Get(o, "localizations"));

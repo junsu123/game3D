@@ -22,6 +22,7 @@ namespace Mylti
         public ProgramClock Clock { get; private set; }
         public EventLogger Log { get; private set; }
         public MegaRampBuilder Builder { get; private set; }
+        public CrowdDirector Crowd { get; private set; }
         public ChallengeSession Session { get; private set; }
         public CameraDirector Cam { get; private set; }
         public ReplaySystem Replay { get; private set; }
@@ -154,6 +155,13 @@ namespace Mylti
                 if (Vfx != null) Vfx.ImpactBurst(p, dv * 1.6f);
             };
             Sky = gameObject.AddComponent<HdriSky>();
+            CrowdDirector.Enabled = Settings.CrowdEnabled;
+            CrowdDirector.Density = Settings.CrowdDensity;
+            CrowdDirector.HeroShare = Settings.CrowdHeroShare;
+            Crowd = new GameObject("CrowdDirector").AddComponent<CrowdDirector>();
+            Crowd.Session = Session;
+            Crowd.Attach(Log);
+            Builder.Crowd = Crowd;
             ApplyQuality(Settings.Quality);
             VehicleAudio.MasterVolume = Settings.EnableAudio ? 0.8f : 0f;
         }

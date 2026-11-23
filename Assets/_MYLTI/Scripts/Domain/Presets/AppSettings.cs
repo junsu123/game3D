@@ -28,6 +28,10 @@ namespace Mylti.Domain
         public float DamageStrength = 1f;                               // body deformation multiplier
         public bool MusicEnabled = true;                                // music files from <data>/Music
         public float MusicVolume = 0.6f;
+        public bool CrowdEnabled = true;                                // animated spectators + crowd sound
+        public float CrowdDensity = 1f;                                 // 0.3 … 1.5 (fewer people = faster PC)
+        public float CrowdVolume = 0.7f;
+        public float CrowdHeroShare = 0.6f;                             // share of spectators in MYLTI Squad hero costumes
         public bool UseHdriSky = true;                                  // photographed CC0 sky (Poly Haven)
         public string HdriId = "kloofendal_48d_partly_cloudy_puresky";
         public string TtsVoice = "";
@@ -69,6 +73,7 @@ namespace Mylti.Domain
                 .Prop("burnTextCards", BurnTextCards).Prop("showNameplates", ShowNameplates)
                 .Prop("allowRealBrands", AllowRealBrands).Prop("damageStrength", DamageStrength).Prop("musicEnabled", MusicEnabled)
                 .Prop("musicVolume", MusicVolume).Prop("useHdriSky", UseHdriSky).Prop("hdriId", HdriId)
+                .Prop("crowdEnabled", CrowdEnabled).Prop("crowdDensity", CrowdDensity).Prop("crowdVolume", CrowdVolume).Prop("crowdHeroShare", CrowdHeroShare)
                 .Prop("narrationEnabled", NarrationEnabled).Prop("soundDesignEnabled", SoundDesignEnabled)
                 .EndObject();
         }
@@ -111,6 +116,10 @@ namespace Mylti.Domain
                 s.MusicEnabled = MiniJson.GetBool(o, "musicEnabled", true);
                 s.MusicVolume = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "musicVolume", 0.6)));
                 s.UseHdriSky = MiniJson.GetBool(o, "useHdriSky", true);
+                s.CrowdEnabled = MiniJson.GetBool(o, "crowdEnabled", true);
+                s.CrowdDensity = (float)Math.Max(0.3, Math.Min(1.5, MiniJson.GetDouble(o, "crowdDensity", 1)));
+                s.CrowdVolume = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "crowdVolume", 0.7)));
+                s.CrowdHeroShare = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "crowdHeroShare", 0.6)));
                 s.HdriId = MiniJson.GetString(o, "hdriId", "kloofendal_48d_partly_cloudy_puresky");
                 s.TtsVoice = MiniJson.GetString(o, "ttsVoice", "");
                 s.GoogleTtsKey = MiniJson.GetString(o, "googleTtsKey", "");

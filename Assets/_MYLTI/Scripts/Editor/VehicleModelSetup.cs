@@ -91,4 +91,43 @@ namespace Mylti.EditorTools
             mi.addCollider = false;
         }
     }
+
+    /// <summary>
+    /// Spectator characters / animations dropped into Resources/Crowd (e.g. Mixamo FBX): Humanoid rig so any clip
+    /// plays on any character, every clip loops, no root motion drift.
+    /// </summary>
+    public sealed class CrowdModelImport : AssetPostprocessor
+    {
+        static bool IsCrowd(string path) => path.Replace('\\', '/').Contains("/Resources/Crowd/");
+
+        void OnPreprocessModel()
+        {
+            if (!IsCrowd(assetPath)) return;
+            var mi = (ModelImporter)assetImporter;
+            mi.animationType = ModelImporterAnimationType.Human;
+            mi.addCollider = false;
+            mi.importCameras = false;
+            mi.importLights = false;
+        }
+
+        void OnPreprocessAnimation()
+        {
+            if (!IsCrowd(assetPath)) return;
+            var mi = (ModelImporter)assetImporter;
+            var clips = mi.defaultClipAnimations;
+            if (clips == null || clips.Length == 0) return;
+            string file = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+            for (int i = 0; i < clips.Length; i++)
+            {
+                clips[i].loopTime = true;
+                clips[i].lockRootPositionXZ = true;
+                clips[i].lockRootHeightY = true;
+                clips[i].lockRootRotation = true;
+                clips[i].keepOriginalPositionXZ = true;
+                // Mixamo names every clip "mixamo.com": use the file name so "Clapping.fbx" is recognised as clapping
+                if (clips[i].name == "mixamo.com" || clips[i].name.StartsWith("Take 0")) clips[i].name = clips.Length == 1 ? file : file + "_" + i;
+            }
+            mi.clipAnimations = clips;
+        }
+    }
 }
