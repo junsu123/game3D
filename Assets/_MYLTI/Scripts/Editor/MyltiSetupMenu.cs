@@ -44,6 +44,7 @@ namespace Mylti.EditorTools
             EditorBuildSettings.scenes = scenes.ToArray();
 
             PlayerSettings.companyName = "MYLTI";
+            VehicleModelSetup.IncludeRuntimeShaders();
             PlayerSettings.productName = "MYLTI Challenge Studio";
             PlayerSettings.defaultScreenWidth = 1920;
             PlayerSettings.defaultScreenHeight = 1080;

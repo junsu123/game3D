@@ -89,8 +89,8 @@ Reply JSON only: {""de"":{""title"":""..."",""description"":""...""}, ...}";
             if (title.Length > 100) return "title too long";
             if (title.Contains("<") || title.Contains(">") || desc.Contains("<") || desc.Contains(">")) return "angle brackets";
             string lower = (title + " " + desc).ToLowerInvariant();
-            foreach (var tm in ClaimChecker.Trademarks)
-                if (ClaimChecker.ContainsWord(lower, tm) && !ClaimChecker.ContainsWord((srcTitle + " " + srcDesc).ToLowerInvariant(), tm)) return "brand " + tm;
+            string blocked = ClaimChecker.FindBlockedBrand(lower);
+            if (blocked != null && !ClaimChecker.ContainsWord((srcTitle + " " + srcDesc).ToLowerInvariant(), blocked)) return "brand " + blocked;
             var srcNums = new HashSet<string>(ClaimChecker.ExtractNumbers(srcTitle + " " + srcDesc));
             foreach (var n in ClaimChecker.ExtractNumbers(NormalizeNumbers(title + " " + desc)))
                 if (!srcNums.Contains(n)) return "number " + n + " not in the English text";

@@ -41,7 +41,8 @@ namespace Mylti.Domain
 
     public enum AttemptOutcome
     {
-        None, CleanLanding, RoughLanding, Rollover, NoJump, FellOff, Stuck, Timeout, Aborted
+        None, CleanLanding, RoughLanding, Rollover, NoJump, FellOff, Stuck, Timeout, Aborted,
+        Crashed     // crash-wall test finished (vehicle hit the barrier and stayed on its wheels)
     }
 
     public enum ScoringRule
@@ -49,7 +50,10 @@ namespace Mylti.Domain
         FurthestValidLanding,  // longest landing that ends upright
         CleanLandingOnly,      // only landings with no heavy body slam count; then distance
         TargetZone,            // valid landing closest to a target distance
-        BeyondTheWall          // must land beyond a crate wall; then distance
+        BeyondTheWall,         // must land beyond a crate wall; then distance
+        LeastDamage,           // jump; the landing with the least body damage wins
+        CrashWall,             // drive into a concrete barrier at a set speed; least damage wins
+        DropTest               // dropped from a crane; least damage wins
     }
 
     public enum ObstacleSet

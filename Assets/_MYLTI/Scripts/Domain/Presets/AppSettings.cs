@@ -24,6 +24,12 @@ namespace Mylti.Domain
         public string ElevenLabsModel = "eleven_multilingual_v2";
         public bool BurnTextCards = true;                               // intro / hook / result text in the final MP4
         public bool ShowNameplates = true;                              // name + speed above each vehicle
+        public bool AllowRealBrands = true;                             // owner's real car models may be named by brand
+        public float DamageStrength = 1f;                               // body deformation multiplier
+        public bool MusicEnabled = true;                                // music files from <data>/Music
+        public float MusicVolume = 0.6f;
+        public bool UseHdriSky = true;                                  // photographed CC0 sky (Poly Haven)
+        public string HdriId = "kloofendal_48d_partly_cloudy_puresky";
         public string TtsVoice = "";
         public string GoogleTtsKey = "";
         public string ElevenLabsKey = "";
@@ -61,6 +67,8 @@ namespace Mylti.Domain
                 .Prop("elevenLabsKey", RememberApiKeys ? ElevenLabsKey : "").Prop("elevenLabsVoiceId", ElevenLabsVoiceId)
                 .Prop("elevenLabsModel", ElevenLabsModel).Prop("kokoroVoice", KokoroVoice)
                 .Prop("burnTextCards", BurnTextCards).Prop("showNameplates", ShowNameplates)
+                .Prop("allowRealBrands", AllowRealBrands).Prop("damageStrength", DamageStrength).Prop("musicEnabled", MusicEnabled)
+                .Prop("musicVolume", MusicVolume).Prop("useHdriSky", UseHdriSky).Prop("hdriId", HdriId)
                 .Prop("narrationEnabled", NarrationEnabled).Prop("soundDesignEnabled", SoundDesignEnabled)
                 .EndObject();
         }
@@ -98,6 +106,12 @@ namespace Mylti.Domain
                 s.ElevenLabsModel = MiniJson.GetString(o, "elevenLabsModel", "eleven_multilingual_v2");
                 s.BurnTextCards = MiniJson.GetBool(o, "burnTextCards", true);
                 s.ShowNameplates = MiniJson.GetBool(o, "showNameplates", true);
+                s.AllowRealBrands = MiniJson.GetBool(o, "allowRealBrands", true);
+                s.DamageStrength = (float)Math.Max(0, Math.Min(3, MiniJson.GetDouble(o, "damageStrength", 1)));
+                s.MusicEnabled = MiniJson.GetBool(o, "musicEnabled", true);
+                s.MusicVolume = (float)Math.Max(0, Math.Min(1, MiniJson.GetDouble(o, "musicVolume", 0.6)));
+                s.UseHdriSky = MiniJson.GetBool(o, "useHdriSky", true);
+                s.HdriId = MiniJson.GetString(o, "hdriId", "kloofendal_48d_partly_cloudy_puresky");
                 s.TtsVoice = MiniJson.GetString(o, "ttsVoice", "");
                 s.GoogleTtsKey = MiniJson.GetString(o, "googleTtsKey", "");
                 s.ElevenLabsKey = MiniJson.GetString(o, "elevenLabsKey", "");

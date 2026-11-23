@@ -5,7 +5,8 @@
         "MYLTI.Domain",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Core.Runtime",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "Unity.RenderPipelines.Universal.Runtime",
+        "glTFast"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -24,6 +25,11 @@
             "name": "com.unity.render-pipelines.universal",
             "expression": "14.0.0",
             "define": "MYLTI_URP"
+        },
+        {
+            "name": "com.unity.cloud.gltfast",
+            "expression": "6.0.0",
+            "define": "MYLTI_GLTFAST"
         }
     ],
     "noEngineReferences": false

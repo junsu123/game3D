@@ -63,6 +63,11 @@ namespace Mylti.Domain
         public string ComebackVehicleId;     // trailing after round 3, overall winner at the end
         public bool LeadChanged;
         public int RolloverCount, FellOffCount, ObstacleHitCount, BodySlamCount, WallClearCount;
+        public int WallCrashCount, DropCount, WheelsLostCount, GlassBrokenCount;
+        public bool HadCrashRound, HadDropRound;
+        public double? MaxCrashSpeedKmh, MaxDropHeightM;
+        public Fact LeastDamage, MostDamage;
+        public string LeastDamageVehicleId, MostDamageVehicleId;
         public bool HadWallRound, HadTargetRound, HadBridgeRound, HadObstacleRound, HadLandingRampRound;
         public Fact LongestJump, FastestSpeed, HighestPeak, BiggestAirtime;
         public string LongestJumpVehicleId;
@@ -153,8 +158,16 @@ namespace Mylti.Domain
             var completedSpecs = plan?.ScoredRounds.Where(r => run.Rounds.Any(x => x.RoundIndex == r.Index && x.Completed)).ToList() ?? new List<RoundSpec>();
             if (completedSpecs.Count > 0)
             {
-                fs.MinKickerHeightM = Math.Round(completedSpecs.Min(r => r.KickerHeight), 0);
-                fs.MaxKickerHeightM = Math.Round(completedSpecs.Max(r => r.KickerHeight), 0);
+                var jumps = completedSpecs.Where(r => r.IsJump).ToList();
+                if (jumps.Count > 0)
+                {
+                    fs.MinKickerHeightM = Math.Round(jumps.Min(r => r.KickerHeight), 0);
+                    fs.MaxKickerHeightM = Math.Round(jumps.Max(r => r.KickerHeight), 0);
+                }
+                fs.HadCrashRound = completedSpecs.Any(r => r.Rule == ScoringRule.CrashWall);
+                fs.HadDropRound = completedSpecs.Any(r => r.Rule == ScoringRule.DropTest);
+                if (fs.HadCrashRound) fs.MaxCrashSpeedKmh = Math.Round(completedSpecs.Where(r => r.Rule == ScoringRule.CrashWall).Max(r => r.CrashSpeedKmh));
+                if (fs.HadDropRound) fs.MaxDropHeightM = Math.Round(completedSpecs.Where(r => r.Rule == ScoringRule.DropTest).Max(r => r.DropHeightM));
                 fs.HadWallRound = completedSpecs.Any(r => r.Rule == ScoringRule.BeyondTheWall || r.Obstacles == ObstacleSet.CrateWall || r.Obstacles == ObstacleSet.BarrelsAndWall);
                 fs.HadTargetRound = completedSpecs.Any(r => r.Rule == ScoringRule.TargetZone);
                 fs.HadBridgeRound = completedSpecs.Any(r => r.BridgeWidth > 0);
@@ -162,7 +175,9 @@ namespace Mylti.Domain
                 fs.HadLandingRampRound = completedSpecs.Any(r => r.LandingRamp);
                 foreach (var r in completedSpecs)
                 {
-                    fs.RoundKickerHeights.Add(r.KickerHeight);
+                    if (r.Rule == ScoringRule.CrashWall) fs.RoundKickerHeights.Add(r.CrashSpeedKmh);
+                    if (r.Rule == ScoringRule.DropTest) fs.RoundKickerHeights.Add(r.DropHeightM);
+                    if (r.IsJump) fs.RoundKickerHeights.Add(r.KickerHeight);
                     if (r.Rule == ScoringRule.TargetZone) fs.RoundKickerHeights.Add(r.TargetDistance);
                     if (r.Rule == ScoringRule.BeyondTheWall) fs.RoundKickerHeights.Add(r.WallDistance);
                 }
@@ -201,6 +216,24 @@ namespace Mylti.Domain
             fs.ObstacleHitCount = scored.Sum(a => a.ObstacleHits);
             fs.BodySlamCount = scored.Count(a => a.BodySlam);
             fs.WallClearCount = scored.Count(a => a.ClearedWall > 0.5);
+            fs.WallCrashCount = scored.Count(a => a.ImpactSpeedKmh.HasValue);
+            fs.DropCount = scored.Count(a => a.DamagePercent.HasValue && !a.ImpactSpeedKmh.HasValue && !a.LandingDistanceM.HasValue);
+            fs.WheelsLostCount = scored.Sum(a => a.WheelsLost);
+            fs.GlassBrokenCount = scored.Count(a => a.GlassBroken);
+            var damaged = scored.Where(a => a.DamagePercent.HasValue).ToList();
+            if (damaged.Count > 0)
+            {
+                var most = damaged.OrderByDescending(a => a.DamagePercent.Value).First();
+                fs.MostDamage = MakeFact(run, "mostDamage", most, Math.Round(most.DamagePercent.Value), "%", "Damage");
+                fs.MostDamageVehicleId = most.VehicleId;
+                var least = damaged.OrderBy(a => a.DamagePercent.Value).First();
+                fs.LeastDamage = MakeFact(run, "leastDamage", least, Math.Round(least.DamagePercent.Value), "%", "Damage");
+                fs.LeastDamageVehicleId = least.VehicleId;
+                fs.Facts.Add(fs.MostDamage);
+                fs.Facts.Add(fs.LeastDamage);
+                foreach (var a in damaged) fs.RoundKickerHeights.Add(Math.Round(a.DamagePercent.Value));
+            }
+            foreach (var a in scored.Where(x => x.ImpactSpeedKmh.HasValue)) fs.RoundKickerHeights.Add(Math.Round(a.ImpactSpeedKmh.Value));
 
             // Comeback / lead change from the actual leader timeline.
             var timeline = RoundScoring.LeaderTimeline(run.Rounds.Where(r => r.Completed).ToList(), entrants);
@@ -283,6 +316,9 @@ namespace Mylti.Domain
             }
             foreach (var f in fs.Facts) if (f.Number.HasValue) nums.Add(f.Number.Value);
             nums.Add(fs.RolloverCount); nums.Add(fs.ObstacleHitCount); nums.Add(fs.WallClearCount);
+            nums.Add(fs.WallCrashCount); nums.Add(fs.WheelsLostCount);
+            if (fs.MaxCrashSpeedKmh.HasValue) nums.Add(fs.MaxCrashSpeedKmh.Value);
+            if (fs.MaxDropHeightM.HasValue) nums.Add(fs.MaxDropHeightM.Value);
             foreach (double n in nums)
             {
                 fs.AllowedNumbers.Add(Math.Round(n).ToString(CultureInfo.InvariantCulture));

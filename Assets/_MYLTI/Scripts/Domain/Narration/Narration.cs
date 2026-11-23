@@ -152,7 +152,7 @@ namespace Mylti.Domain
                 var groups = attempts.GroupBy(a => Math.Round(a.StartProgramTime, 1)).Select(g => g.ToList()).ToList();
                 bool isFinal = spec.Role == RoundRole.Decisive;
 
-                double firstTakeoff = groups.Count > 0 ? (groups[0].Min(a => a.TakeoffProgramTime ?? a.EndProgramTime)) : startEv.ProgramTime + 8;
+                double firstTakeoff = groups.Count > 0 ? (groups[0].Min(a => a.TakeoffProgramTime ?? a.LandingProgramTime ?? a.EndProgramTime)) : startEv.ProgramTime + 8;
                 var ri = Add("round_intro", startEv.ProgramTime + 0.3, firstTakeoff - 0.8, true, spec.Index);
                 FillRoundFacts(ri, spec, isFinal, totalRounds, lang);
                 if (groups.Count > 0) FillApproach(ri, groups[0], spec);
@@ -161,7 +161,7 @@ namespace Mylti.Domain
                 {
                     var grp = groups[g];
                     double start = grp.Min(a => a.StartProgramTime);
-                    double takeoff = grp.Min(a => a.TakeoffProgramTime ?? a.EndProgramTime);
+                    double takeoff = grp.Min(a => a.TakeoffProgramTime ?? a.LandingProgramTime ?? a.EndProgramTime);
                     if (g > 0)
                     {
                         var ap = Add("approach", start + 0.3, takeoff - 0.8, true, spec.Index);
@@ -182,7 +182,12 @@ namespace Mylti.Domain
                         if (a.ObstacleHits > 0) rs.Facts["obstaclesHit_" + n] = a.ObstacleHits.ToString(CultureInfo.InvariantCulture);
                         if (a.ClearedWall >= 0) rs.Facts["clearedWall_" + n] = a.ClearedWall > 0.5 ? "yes" : "no";
                         if (a.TargetError.HasValue) { rs.Facts["metersFromTarget_" + n] = F1(a.TargetError.Value); AddNum(rs, a.TargetError.Value); }
+                        if (a.DamagePercent.HasValue) { rs.Facts["damagePercent_" + n] = F0(a.DamagePercent.Value); AddNum(rs, a.DamagePercent.Value); }
+                        if (a.ImpactSpeedKmh.HasValue) { rs.Facts["wallImpactKmh_" + n] = F0(a.ImpactSpeedKmh.Value); AddNum(rs, a.ImpactSpeedKmh.Value); }
+                        if (a.WheelsLost > 0) { rs.Facts["wheelsLost_" + n] = a.WheelsLost.ToString(CultureInfo.InvariantCulture); AddNum(rs, a.WheelsLost); }
+                        if (a.GlassBroken) rs.Facts["glass_" + n] = "windows shattered";
                     }
+                    if (spec.Rule == ScoringRule.DropTest) { rs.Facts["dropHeightM"] = F0(spec.DropHeightM); AddNum(rs, spec.DropHeightM); }
                     rs.Facts["rule"] = RunPlanner.RuleText(spec.Rule, spec, lang);
                 }
 
@@ -199,7 +204,9 @@ namespace Mylti.Domain
                         s.Facts["replayOf"] = n;
                         s.Facts["outcome"] = OutcomeWords(a);
                         if (a.LandingDistanceM.HasValue && a.ValidLanding) { s.Facts["distanceM"] = F1(a.LandingDistanceM.Value); AddNum(s, a.LandingDistanceM.Value); }
-                        if (a.PeakHeightM > 0) { s.Facts["peakHeightM"] = F1(a.PeakHeightM); AddNum(s, a.PeakHeightM); }
+                        if (a.PeakHeightM > 0 && a.LandingDistanceM.HasValue) { s.Facts["peakHeightM"] = F1(a.PeakHeightM); AddNum(s, a.PeakHeightM); }
+                        if (a.DamagePercent.HasValue) { s.Facts["damagePercent"] = F0(a.DamagePercent.Value); AddNum(s, a.DamagePercent.Value); }
+                        if (a.ImpactSpeedKmh.HasValue) { s.Facts["wallImpactKmh"] = F0(a.ImpactSpeedKmh.Value); AddNum(s, a.ImpactSpeedKmh.Value); }
                     }
                     s.Facts["speed"] = "slow motion replay";
                 }
@@ -278,6 +285,8 @@ namespace Mylti.Domain
             s.Facts["whatChanged"] = SpeakableChange(spec);
             s.Facts["subQuestion"] = Speakable(spec.SubQuestion);
             s.Facts["format"] = spec.HeadToHead ? "all vehicles at the same time" : "one vehicle at a time";
+            if (spec.Rule == ScoringRule.CrashWall) { s.Facts["crashSpeedKmh"] = F0(spec.CrashSpeedKmh); s.Facts["test"] = "drive straight into a concrete wall"; }
+            if (spec.Rule == ScoringRule.DropTest) { s.Facts["dropHeightM"] = F0(spec.DropHeightM); s.Facts["test"] = "dropped from a crane"; }
             if (isFinal) s.Facts["stakes"] = "the final counts double";
         }
 
@@ -293,7 +302,10 @@ namespace Mylti.Domain
 
         public static string SpeakableChange(RoundSpec r)
         {
+            if (r.Rule == ScoringRule.CrashWall) return $"crash test: straight into a concrete wall at {F0(r.CrashSpeedKmh)} kilometers per hour, least damage wins";
+            if (r.Rule == ScoringRule.DropTest) return $"drop test: every vehicle falls from a crane {F0(r.DropHeightM)} meters up, least damage wins";
             var parts = new List<string> { $"the kicker is {F0(r.KickerHeight)} meters high at {F0(r.KickerAngleDeg)} degrees" };
+            if (r.Rule == ScoringRule.LeastDamage) parts.Add("this time the landing with the least damage wins");
             if (r.Obstacles == ObstacleSet.BarrelLine) parts.Add("a line of barrels waits in the landing zone");
             if (r.Obstacles == ObstacleSet.CrateWall) parts.Add("a wall of crates stands in the landing zone");
             if (r.Obstacles == ObstacleSet.BarrelsAndWall) parts.Add("barrels and a crate wall fill the landing zone");
@@ -311,6 +323,7 @@ namespace Mylti.Domain
                 case AttemptOutcome.RoughLanding: return "hard landing but stayed upright";
                 case AttemptOutcome.Rollover: return "rolled over after landing";
                 case AttemptOutcome.FellOff: return "fell off the course";
+                case AttemptOutcome.Crashed: return a.WheelsLost > 0 ? "hit the concrete wall and lost a wheel" : "hit the concrete wall and stayed on its wheels";
                 case AttemptOutcome.NoJump: return "did not reach the lip";
                 case AttemptOutcome.Stuck: return "got stuck, attempt failed";
                 case AttemptOutcome.Timeout: return "timed out";
@@ -342,6 +355,7 @@ namespace Mylti.Domain
         static readonly string[] PresentOutcomeWords = { "wins", "winner", "beats", "champion", "victory", "loses", "lands", "crash", "crashes", "rolls", "rollover", "flips", "falls", "survives", "fails" };
         static readonly string[] RollWords = { "rolled", "rolls", "rollover", "flipped", "flips", "crash", "crashed", "crashes", "wreck" };
         static readonly string[] FallWords = { "fell", "falls", "plunge", "plunges" };
+        static readonly string[] RollOnlyWords = { "rolled", "rolls", "rollover", "flipped", "flips" };
         static readonly string[] WinWords = { "wins", "won", "winner", "champion", "victory", "takes the round", "takes it" };
 
         public static string Check(string text, NarrationSlot slot, ContentFactSheet fs)
@@ -350,7 +364,8 @@ namespace Mylti.Domain
             string t = text.ToLowerInvariant();
             int words = text.Split(new[] { ' ', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
             if (words > slot.MaxWords * 1.2 + 1) return $"too long ({words} words > {slot.MaxWords})";
-            foreach (var tm in ClaimChecker.Trademarks) if (HasWord(t, tm)) return "brand: " + tm;
+            string blocked = ClaimChecker.FindBlockedBrand(t);
+            if (blocked != null) return "brand: " + blocked;
             if (t.Contains("real-world") || t.Contains("realistic damage") || t.Contains("scientific")) return "realism claim";
 
             var sentences = Regex.Split(text, @"(?<=[.!?])\s+").Where(x => x.Trim().Length > 0).ToList();
@@ -374,7 +389,13 @@ namespace Mylti.Domain
                 bool question = sentences.Count > 0 && sentences.All(x => x.TrimEnd().EndsWith("?"));
                 bool rolled = slot.Attempts.Any(a => a.Outcome == AttemptOutcome.Rollover);
                 bool fell = slot.Attempts.Any(a => a.Outcome == AttemptOutcome.FellOff);
-                if (!rolled && RollWords.Any(w => HasWord(t, w)) && slot.Kind != "standings" && slot.Kind != "outro") return "rollover/crash not in this slot";
+                bool crashTest = slot.Attempts.Any(a => a.ImpactSpeedKmh.HasValue);
+                bool summary = slot.Kind == "standings" || slot.Kind == "outro";
+                if (!rolled && !summary)
+                {
+                    if (RollOnlyWords.Any(w => HasWord(t, w))) return "rollover not in this slot";
+                    if (!crashTest && RollWords.Any(w => HasWord(t, w))) return "rollover/crash not in this slot";
+                }
                 if (!fell && FallWords.Any(w => HasWord(t, w))) return "fall not in this slot";
                 bool winAllowed = (slot.Kind == "round_result" && slot.Round?.WinnerVehicleId != null)
                                   || ((slot.Kind == "standings" || slot.Kind == "outro") && fs?.OverallWinnerId != null);
@@ -510,8 +531,8 @@ Reply with JSON only: {""lines"":[{""id"":""s01"",""text"":""...""}, ...]} with 
                 case "round_intro":
                     return Fit(s,
                         $"{F("round")}. {Cap(F("whatChanged"))}. {F("subQuestion")}",
-                        $"{F("round")}. {F("kickerHeightM")} meters at {F("kickerAngleDeg")} degrees. {F("subQuestion")}",
-                        $"{F("round")}. {F("kickerHeightM")} meters at {F("kickerAngleDeg")} degrees.",
+                        s.Facts.ContainsKey("test") ? $"{F("round")}. {F("subQuestion")}" : $"{F("round")}. {F("kickerHeightM")} meters at {F("kickerAngleDeg")} degrees. {F("subQuestion")}",
+                        s.Facts.ContainsKey("test") ? $"{F("round")}." : $"{F("round")}. {F("kickerHeightM")} meters at {F("kickerAngleDeg")} degrees.",
                         $"{F("round")}.");
                 case "approach":
                     return Pick(r, $"Up next, the {F("upNow")}.", $"Here comes the {F("upNow")}.", $"The {F("upNow")} is on the runway.");
@@ -523,6 +544,8 @@ Reply with JSON only: {""lines"":[{""id"":""s01"",""text"":""...""}, ...]} with 
                         {
                             string n = VehicleCatalog.Find(a.VehicleId).DisplayNameEn;
                             string d = s.Facts.TryGetValue("distanceM_" + n, out var dv) ? dv : null;
+                            string dmg = s.Facts.TryGetValue("damagePercent_" + n, out var dd) ? dd : null;
+                            if (dmg != null && (a.ImpactSpeedKmh.HasValue || d == null)) return $"{n}, {dmg} percent damage.";
                             switch (a.Outcome)
                             {
                                 case AttemptOutcome.CleanLanding:
@@ -539,6 +562,24 @@ Reply with JSON only: {""lines"":[{""id"":""s01"",""text"":""...""}, ...]} with 
                     {
                         string n = VehicleCatalog.Find(a.VehicleId).DisplayNameEn;
                         string d = s.Facts.TryGetValue("distanceM_" + n, out var dv) ? dv : null;
+                        string dmg = s.Facts.TryGetValue("damagePercent_" + n, out var dd) ? dd : null;
+                        string extra = (a.WheelsLost > 0 ? Pick(r, " A wheel comes off!", " There goes a wheel!") : "") + (a.GlassBroken ? Pick(r, " Glass everywhere!", " The windows are gone!") : "");
+                        if (a.ImpactSpeedKmh.HasValue && dmg != null)
+                        {
+                            parts.Add(Pick(r, $"Huge hit for the {n}! {dmg} percent damage.", $"The {n} slams into the concrete. {dmg} percent damage.", $"What an impact from the {n}: {dmg} percent damage.") + extra);
+                            continue;
+                        }
+                        if (dmg != null && d == null)
+                        {
+                            parts.Add((a.Outcome == AttemptOutcome.Rollover ? Pick(r, $"The {n} lands on its roof!", $"The {n} comes down upside down!") : Pick(r, $"The {n} hits the ground hard!", $"Down comes the {n}!"))
+                                      + $" {dmg} percent damage." + extra);
+                            continue;
+                        }
+                        if (dmg != null && a.ValidLanding)
+                        {
+                            parts.Add(Pick(r, $"The {n} lands at {d} meters with {dmg} percent damage.", $"{d} meters for the {n}, and {dmg} percent damage.") + extra);
+                            continue;
+                        }
                         switch (a.Outcome)
                         {
                             case AttemptOutcome.CleanLanding: parts.Add(Pick(r, $"Clean landing for the {n}, {d} meters!", $"The {n} sticks it at {d} meters!", $"Beautiful from the {n}: {d} meters.")); break;

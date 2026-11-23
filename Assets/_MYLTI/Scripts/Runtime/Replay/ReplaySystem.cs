@@ -119,27 +119,53 @@ namespace Mylti
         }
 
         /// <summary>Plays [from,to] (program time of the original take) at 'speed'. Items are matched by Replayable.Id.</summary>
-        public IEnumerator Play(Take take, double from, double to, float speed, IEnumerable<Replayable> sceneItems)
+        /// <summary>Playback speed at clip time t: 'speed', dropping to a dramatic slow motion around 'slowAt' (if given).</summary>
+        public static float SpeedAt(double t, float speed, double slowAt)
+        {
+            if (slowAt < 0) return speed;
+            double d = t - slowAt;
+            if (d < -0.9 || d > 1.8) return speed;
+            if (d < -0.35) return Mathf.Lerp(speed, 0.2f, (float)((d + 0.9) / 0.55)); // ease into slow motion
+            if (d < 1.2) return 0.2f;
+            return Mathf.Lerp(0.2f, speed, (float)((d - 1.2) / 0.6));
+        }
+
+        /// <summary>Real-time seconds needed to play [from,to] with SpeedAt.</summary>
+        public static double Duration(double from, double to, float speed, double slowAt)
+        {
+            double t = from, real = 0;
+            while (t < to) { float s = SpeedAt(t, speed, slowAt); t += 0.02 * s; real += 0.02; }
+            return real;
+        }
+
+        public IEnumerator Play(Take take, double from, double to, float speed, IEnumerable<Replayable> sceneItems, double slowAt = -1)
         {
             if (take == null) yield break;
             EndTake();
             IsPlaying = true;
             var items = sceneItems.Where(i => i != null && take.Tracks.ContainsKey(i.Id)).ToList();
+            var damages = new List<VehicleDamage>();
             foreach (var i in items)
             {
                 var vc = i.GetComponent<VehicleController>();
                 if (vc != null) vc.SetReplayMode(true);
                 else if (i.Body != null) { i.Body.isKinematic = true; }
+                var dmg = i.GetComponent<VehicleDamage>();
+                if (dmg != null) { dmg.BeginReplay(from); damages.Add(dmg); }
             }
             double clipT = from;
-            double startProgram = Clock.Time;
+            double lastProgram = Clock.Time;
             while (clipT < to)
             {
                 foreach (var i in items) Apply(i, take.Tracks[i.Id], clipT);
+                foreach (var d in damages) d.ReplayTo(clipT);
                 yield return null;
-                clipT = from + (Clock.Time - startProgram) * speed;
+                double dt = Clock.Time - lastProgram;
+                lastProgram = Clock.Time;
+                clipT += dt * SpeedAt(clipT, speed, slowAt);
             }
             foreach (var i in items) Apply(i, take.Tracks[i.Id], to);
+            foreach (var d in damages) d.ReplayTo(to);
             IsPlaying = false;
         }
 
@@ -152,6 +178,8 @@ namespace Mylti
                 var vc = i.GetComponent<VehicleController>();
                 if (vc != null) vc.SetReplayMode(false);
                 else if (i.Body != null) i.Body.isKinematic = false;
+                var dmg = i.GetComponent<VehicleDamage>();
+                if (dmg != null) dmg.EndReplay();
             }
         }
 

@@ -36,6 +36,10 @@ namespace Mylti
         public EpisodeLog Episodes { get; private set; }
         public SceneLook Look { get; private set; }
         public VfxDirector Vfx { get; private set; }
+        public VehicleModelLibrary Models { get; private set; }
+        public HdriSky Sky { get; private set; }
+        public List<UserVehicleSpec> UserVehicles { get; private set; } = new List<UserVehicleSpec>();
+        public string VehiclesDir => Path.Combine(DataRoot, "Vehicles");
 
         // data
         public string DataRoot { get; private set; }
@@ -98,6 +102,9 @@ namespace Mylti
             Session.Builder = Builder;
             Session.Log = Log;
             Session.AudioEnabled = Settings.EnableAudio;
+            Models = new GameObject("VehicleModels").AddComponent<VehicleModelLibrary>();
+            VehicleDamage.Now = () => Clock.Time;
+            VehicleDamage.Strength = Settings.DamageStrength;
             Session.StuckSeconds = Config.AutoRecoverStuckSeconds;
 
             var camGo = Camera.main != null ? Camera.main.gameObject : new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
@@ -141,12 +148,20 @@ namespace Mylti
             Vfx = new GameObject("VFX").AddComponent<VfxDirector>();
             Vfx.Session = Session;
             Vfx.Attach(Log);
+            VehicleDamage.BigImpact += (d, dv, p) =>
+            {
+                if (Cam != null) Cam.AddShake(Mathf.Clamp(dv * 0.018f, 0.04f, 0.35f));
+                if (Vfx != null) Vfx.ImpactBurst(p, dv * 1.6f);
+            };
+            Sky = gameObject.AddComponent<HdriSky>();
             ApplyQuality(Settings.Quality);
             VehicleAudio.MasterVolume = Settings.EnableAudio ? 0.8f : 0f;
         }
 
         void Start()
         {
+            LoadUserVehicles(false);
+            if (Settings.UseHdriSky) StartCoroutine(Sky.Load(DataRoot, Settings.HdriId, Msg));
             NewSandboxRecord();
             Session.BuildMap(Config.Sandbox, Config.Entrants.Count, Config.Seed);
             Session.EnsureVehicles(Config.Entrants);
@@ -155,6 +170,41 @@ namespace Mylti
             Overlay.CardsEnabled = Settings.ShowCardsInVideo;
             Overlay.ScoreboardEnabled = Settings.ShowScoreboardInVideo;
             Msg("Sẵn sàng. Bấm ▶ AUTO EPISODE (tab đầu tiên) để Claude viết kịch bản, tự quay và xuất video 10:00 có lời bình.");
+        }
+
+        /// <summary>
+        /// Scan &lt;data&gt;/Vehicles (+ Resources/Vehicles) for the owner's 3D car models, register them, load the meshes,
+        /// then rebuild the vehicles in the scene. With 2+ real models, the sandbox line-up switches to them.
+        /// </summary>
+        public void LoadUserVehicles(bool rebuildNow)
+        {
+            var notes = new List<string>();
+            UserVehicles = UserVehicleSpec.LoadAll(VehiclesDir, VehicleModelLibrary.ResourceRefs(), Settings.AllowRealBrands, notes);
+            foreach (var n in notes) Msg(n);
+            var user = VehicleCatalog.UserVehicles.ToList();
+            if (user.Count >= 2 && Config.Entrants.All(e => e.Def == null || !e.Def.IsUserModel))
+            {
+                string[] palette = { "#D12B38", "#2C82D3", "#E8A33D" };
+                Config.Entrants.Clear();
+                for (int i = 0; i < Math.Min(3, user.Count); i++)
+                    Config.Entrants.Add(new Entrant { VehicleId = user[i].Id, ColorHex = palette[i], Lane = i, Mode = DriveMode.AI, TargetSpeedKmh = user[i].DefaultTargetSpeedKmh });
+            }
+            Config.Entrants.RemoveAll(e => e.Def == null);
+            if (Config.Entrants.Count == 0)
+                Config.Entrants.AddRange(ScenarioConfig.CreateDefault().Entrants);
+            StartCoroutine(LoadModelsThenRebuild(rebuildNow));
+        }
+
+        System.Collections.IEnumerator LoadModelsThenRebuild(bool force)
+        {
+            int before = Models.Templates.Count;
+            yield return StartCoroutine(Models.LoadAll(VehicleCatalog.UserVehicles, Msg));
+            if ((force || Models.Templates.Count != before) && !Director.IsBusy && !Producer.Busy)
+            {
+                Session.RebuildAll(Config.Entrants);
+                Session.LineUp(Config.Entrants);
+                if (Models.Templates.Count > 0) Msg($"Đã nạp {Models.Templates.Count} mẫu xe 3D.");
+            }
         }
 
         void OnDestroy()

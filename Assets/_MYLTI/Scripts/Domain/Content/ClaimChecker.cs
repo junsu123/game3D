@@ -26,9 +26,22 @@ namespace Mylti.Domain
             "ferrari", "lamborghini", "porsche", "bugatti", "mclaren", "tesla", "ford", "toyota", "honda", "bmw",
             "mercedes", "audi", "nissan", "chevrolet", "chevy", "dodge", "jeep", "volvo", "scania", "kenworth",
             "peterbilt", "volkswagen", "hyundai", "kia", "mazda", "subaru", "lexus", "koenigsegg", "pagani",
+            "mitsubishi", "land rover", "range rover", "jaguar", "fiat", "renault", "peugeot", "skoda", "cadillac", "gmc",
+            "buick", "rivian", "lucid", "aston martin", "bentley", "rolls-royce", "maserati", "alfa romeo", "suzuki", "isuzu",
+            "freightliner", "iveco", "byd", "polestar", "opel", "vauxhall", "citroen", "dacia", "cupra", "infiniti", "acura", "hummer",
             "beamng", "gta", "forza", "hot wheels", "monster jam", "marvel", "disney", "pixar", "batman", "spider-man",
             "lightning mcqueen", "transformers", "optimus"
         };
+
+        public const string CreditPrefixEn = "3D models: ", CreditPrefixVi = "Mẫu 3D: ";
+
+        /// <summary>First trademark in the (lower-case) text that is not an allowed brand of a vehicle in the catalogue, or null.</summary>
+        public static string FindBlockedBrand(string lower)
+        {
+            foreach (var tm in Trademarks)
+                if (ContainsWord(lower, tm) && !VehicleCatalog.IsAllowedBrand(tm)) return tm;
+            return null;
+        }
 
         static readonly string[] BannedClaims =
         {
@@ -49,10 +62,12 @@ namespace Mylti.Domain
         {
             var issues = new List<ClaimIssue>();
             if (string.IsNullOrWhiteSpace(text)) { issues.Add(Issue(item, CheckLevel.Fail, "empty text")); return issues; }
+            // model credit lines ("3D models: …") are attributions, not claims
+            text = string.Join("\n", text.Split('\n').Where(l => !l.StartsWith(CreditPrefixEn, StringComparison.Ordinal) && !l.StartsWith(CreditPrefixVi, StringComparison.Ordinal)));
             string lower = text.ToLowerInvariant();
 
             foreach (var tm in Trademarks)
-                if (ContainsWord(lower, tm)) issues.Add(Issue(item, CheckLevel.Fail, $"trademark/IP '{tm}' is not in the licensed asset list"));
+                if (ContainsWord(lower, tm) && !VehicleCatalog.IsAllowedBrand(tm)) issues.Add(Issue(item, CheckLevel.Fail, $"trademark/IP '{tm}' is not one of the vehicles in this episode"));
             foreach (var b in BannedClaims)
                 if (lower.Contains(b)) issues.Add(Issue(item, CheckLevel.Fail, $"misleading realism/science claim '{b}'"));
 
@@ -62,7 +77,7 @@ namespace Mylti.Domain
                 bool question = sentence.TrimEnd().EndsWith("?");
                 if (!question)
                 {
-                    if (AnyWord(s, CrashWords) && fs.RolloverCount == 0 && fs.BodySlamCount == 0 && fs.FellOffCount == 0)
+                    if (AnyWord(s, CrashWords) && fs.RolloverCount == 0 && fs.BodySlamCount == 0 && fs.FellOffCount == 0 && fs.WallCrashCount == 0)
                         issues.Add(Issue(item, CheckLevel.Fail, "mentions a crash but no rollover/body slam/fall was recorded"));
                     if (AnyWord(s, RollWords) && fs.RolloverCount == 0)
                         issues.Add(Issue(item, CheckLevel.Fail, "mentions a rollover but none was recorded"));

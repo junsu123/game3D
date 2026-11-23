@@ -30,6 +30,8 @@ namespace Mylti
             if (s.Rule == ScoringRule.BeyondTheWall || s.Obstacles == ObstacleSet.CrateWall || s.Obstacles == ObstacleSet.BarrelsAndWall)
                 s.WallDistance = Slider("Tường thùng ở", s.WallDistance, 25, 200, "0", " m");
             if (s.Rule == ScoringRule.TargetZone) s.TargetDistance = Slider("Mục tiêu ở", s.TargetDistance, 20, 200, "0", " m");
+            if (s.Rule == ScoringRule.CrashWall) s.CrashSpeedKmh = Slider("Tốc độ đâm tường", s.CrashSpeedKmh, 30, 160, "0", " km/h");
+            if (s.Rule == ScoringRule.DropTest) s.DropHeightM = Slider("Độ cao thả", s.DropHeightM, 5, 60, "0", " m");
             GUILayout.BeginHorizontal();
             GUILayout.Label("Seed", label, GUILayout.Width(160));
             if (int.TryParse(GUILayout.TextField(c.Seed.ToString(), GUILayout.Width(120)), out int seed)) c.Seed = seed;
@@ -64,7 +66,8 @@ namespace Mylti
         {
             var c = app.Config;
             GUILayout.Label("Xe tham gia (1–3)", h1);
-            GUILayout.Label("Mẫu xe placeholder tự tạo, không dùng nhãn hiệu thật.", small);
+            UserVehiclesPanel();
+            GUILayout.Label("Danh sách xe (xe 3D thật của bạn + 3 xe mẫu có sẵn):", small);
             foreach (var def in VehicleCatalog.All)
             {
                 var e = c.Entrants.FirstOrDefault(x => x.VehicleId == def.Id);

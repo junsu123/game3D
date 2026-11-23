@@ -40,3 +40,15 @@ Ký hiệu: ☐ chưa làm · ✅ đã kiểm ngoài Unity (test tự động .N
 ## F. Hiệu năng 🎮
 - ☐ Profiler: 1–3 xe, Quality High, 1080p — ghi lại fps thực tế (60 fps là mục tiêu, không cam kết).
 - ☐ Xe ở tốc độ cao không xuyên dốc/mặt đất (CCD); xe rơi khỏi bản đồ → `FellOff`.
+
+## Xe thật, móp méo, đâm tường / thả rơi (bản 11/2026)
+- [ ] glTFast được cài (MYLTI ▸ Install glTFast); Player Settings có define `GLTFAST_KEEP_MESH_DATA`.
+- [ ] Thả 2 file .glb vào Vehicles → Nạp lại: mỗi xe hiện “✓ đã nạp” + ghi chú bánh xe; xe đứng đúng chiều, đúng kích thước, bánh chạm đất, bánh quay khi chạy.
+- [ ] Xe quay ngược → sửa Xoay 180° → Lưu & nạp lại → đúng chiều.
+- [ ] Sandbox luật CrashWall 60 km/h: xe đâm tường, đầu xe lõm, kính gần điểm va vỡ, % hư hại 20–50 %; 130 km/h: > 70 %, có thể văng bánh.
+- [ ] Sandbox luật DropTest 30 m: xe treo ~1.6 s rồi rơi, chạm đất móp; lật thì vẫn có % hư hại.
+- [ ] Replay vòng va chạm: xe nguyên vẹn trước cú va, móp đúng lúc va, chiếu chậm quanh lúc va; sau replay xe về trạng thái hiện tại.
+- [ ] Tắt “Dùng tên hãng thật” → tên chung trong lời bình/chữ video; bật → tên hãng + dòng miễn trừ trong mô tả.
+- [ ] HDRI tải được (thư mục Sky có `ph_…_2k.hdr`), bầu trời thật, thân xe phản chiếu trời; tắt mạng → vẫn chạy với trời mặc định.
+- [ ] Thả 1 bài nhạc vào Music → video cuối có nhạc, nhỏ đi khi có lời bình.
+- [ ] Bản .exe: mẫu xe không bị màu hồng (shader glTFast được đưa vào build).

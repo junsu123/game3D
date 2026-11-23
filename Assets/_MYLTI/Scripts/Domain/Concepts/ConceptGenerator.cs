@@ -13,7 +13,7 @@ namespace Mylti.Domain
     {
         public static readonly string[] SeriesIds =
         {
-            "VehicleVersus", "MegaRampSurvival", "SpeedExperiment", "ImpossibleBridge", "ObstacleSurvival"
+            "VehicleVersus", "MegaRampSurvival", "SpeedExperiment", "ImpossibleBridge", "ObstacleSurvival", "CrashLab"
         };
 
         /// <summary>Series shown in the UI but not implemented in this MVP (honest labelling).</summary>
@@ -28,6 +28,7 @@ namespace Mylti.Domain
                 case "SpeedExperiment": return "Speed Experiment";
                 case "ImpossibleBridge": return "Impossible Bridge";
                 case "ObstacleSurvival": return "Obstacle Survival";
+                case "CrashLab": return "Crash Lab";
                 case "UnderdogComeback": return "Underdog Comeback (P1)";
                 default: return id;
             }
@@ -37,11 +38,12 @@ namespace Mylti.Domain
         {
             switch (seriesId)
             {
-                case "MegaRampSurvival": return new[] { "landing", "wall", "obstacles" };
+                case "MegaRampSurvival": return new[] { "landing", "wall", "obstacles", "crash" };
+                case "CrashLab": return new[] { "crash", "crash_drop", "crash_wall" };
                 case "SpeedExperiment": return new[] { "speed", "target", "wall" };
                 case "ImpossibleBridge": return new[] { "bridge", "bridge_target", "bridge_wall" };
                 case "ObstacleSurvival": return new[] { "obstacles", "wall", "landing" };
-                default: return new[] { "obstacles", "target", "wall" };
+                default: return new[] { "obstacles", "target", "wall", "crash" };
             }
         }
 
@@ -87,11 +89,22 @@ namespace Mylti.Domain
                 };
                 // A dry-run plan gives the concept its real final kicker height.
                 var probe = RunPlanner.BuildRounds(seriesId, twist, entrants, difficulty, 600, lang);
-                float maxH = probe.Max(r => r.KickerHeight);
+                float maxH = probe.Where(r => r.IsJump).Select(r => r.KickerHeight).DefaultIfEmpty(10).Max();
+                float maxCrash = probe.Where(r => r.Rule == ScoringRule.CrashWall).Select(r => r.CrashSpeedKmh).DefaultIfEmpty(0).Max();
+                float maxDrop = probe.Where(r => r.Rule == ScoringRule.DropTest).Select(r => r.DropHeightM).DefaultIfEmpty(0).Max();
                 string hTxt = maxH.ToString("0");
 
                 switch (seriesId)
                 {
+                    case "CrashLab":
+                        c.ViewerQuestion = L(lang, $"Which one survives the most: {JoinNames(names, lang)}?",
+                                                   $"Xe nào chịu đựng tốt nhất: {JoinNames(names, lang)}?");
+                        c.ViewerPromise = L(lang, $"Wall crashes up to {maxCrash:0} km/h, drops from up to {maxDrop:0} m and a {hTxt} m mega jump — the least damage wins each round.",
+                                                  $"Đâm tường tới {maxCrash:0} km/h, thả rơi tới {maxDrop:0} m và cú nhảy {hTxt} m — xe ít hư hại nhất thắng từng vòng.");
+                        c.Stakes = L(lang, "Damage is measured after every test.", "Hư hại được đo sau mỗi thử nghiệm.");
+                        c.CentralConflict = L(lang, "mass vs impact", "khối lượng đối đầu lực va chạm");
+                        c.WorkingTitle = L(lang, $"{versus}: Crash Test, Drop Test, Mega Ramp", $"{versus}: Đâm Tường, Thả Rơi, Mega Ramp");
+                        break;
                     case "MegaRampSurvival":
                         c.ViewerQuestion = L(lang, $"Can the {heaviest.DisplayNameEn} survive a {hTxt} m Mega Ramp?",
                                                    $"{heaviest.DisplayNameVi} có sống sót qua Mega Ramp {hTxt} m?");
@@ -174,6 +187,8 @@ namespace Mylti.Domain
                 case "target": return L(lang, $"{pair} aiming for a bright target ring past the {h} m ramp", $"{pair} nhắm vòng mục tiêu sau dốc {h} m");
                 case "landing": return L(lang, $"{a} dropping onto a steep landing ramp", $"{a} lao xuống dốc tiếp đất");
                 case "speed": return L(lang, $"{a} launching off the lip at full speed with a long shadow below", $"{a} rời mép dốc ở tốc độ tối đa");
+                case "crash": case "crash_wall": return L(lang, $"{a} hitting a concrete wall, front end crumpling, glass flying", $"{a} đâm tường bê tông, đầu xe móp, kính văng");
+                case "crash_drop": return L(lang, $"{a} falling nose-first from a crane", $"{a} rơi chúi đầu từ cần cẩu");
                 default: return L(lang, $"{pair} side-by-side on a narrow bridge before the Mega Ramp", $"{pair} song song trên cầu hẹp trước Mega Ramp");
             }
         }

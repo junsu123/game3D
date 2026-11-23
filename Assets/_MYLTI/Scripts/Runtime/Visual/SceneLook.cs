@@ -13,6 +13,7 @@ namespace Mylti
     /// </summary>
     public sealed class SceneLook : MonoBehaviour
     {
+        public static bool HdriActive;
         public Camera Cam;
 #if MYLTI_URP
         UniversalRenderPipelineAsset urp;
@@ -39,10 +40,13 @@ namespace Mylti
                 sun.shadowStrength = 0.85f;
                 RenderSettings.sun = sun;
             }
-            RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.62f, 0.72f, 0.88f);
-            RenderSettings.ambientEquatorColor = new Color(0.55f, 0.58f, 0.55f);
-            RenderSettings.ambientGroundColor = new Color(0.25f, 0.27f, 0.22f);
+            if (!HdriActive) // otherwise the photographed sky provides ambient light
+            {
+                RenderSettings.ambientMode = AmbientMode.Trilight;
+                RenderSettings.ambientSkyColor = new Color(0.62f, 0.72f, 0.88f);
+                RenderSettings.ambientEquatorColor = new Color(0.55f, 0.58f, 0.55f);
+                RenderSettings.ambientGroundColor = new Color(0.25f, 0.27f, 0.22f);
+            }
 
             // ---- atmosphere: soft haze makes the huge arena read as deep
             RenderSettings.fog = true;

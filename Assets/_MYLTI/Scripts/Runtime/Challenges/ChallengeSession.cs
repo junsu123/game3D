@@ -70,6 +70,15 @@ namespace Mylti
             ParkAll();
         }
 
+        /// <summary>Destroy and recreate every vehicle (after 3D models finished loading or specs changed).</summary>
+        public void RebuildAll(IList<Entrant> entrants)
+        {
+            AbortAll("vehicles rebuilt");
+            foreach (var vc in Vehicles.Values) if (vc != null) Destroy(vc.gameObject);
+            Vehicles.Clear();
+            EnsureVehicles(entrants);
+        }
+
         /// <summary>Parks idle vehicles in the paddock beside the runway (visible, stationary, not in the way).</summary>
         public void ParkAll()
         {
@@ -141,7 +150,21 @@ namespace Mylti
 
         void Launch(VehicleController vc, Entrant e, RoundSpec spec, int lane, bool rolling, bool forceAI, float spawnZ = -1f, float speedFrac = 0.6f)
         {
+            if (spec.Rule == ScoringRule.DropTest && Map.DropZ > 0)
+            {
+                // hang under the crane (kinematic) for a moment, then release
+                float pitch = 18f + 9f * (lane % 2), roll = (lane - 1) * 7f;
+                var p = new Vector3(Map.LaneX[lane], Map.DropHeight, Map.DropZ);
+                vc.Teleport(p, Quaternion.Euler(pitch, 0f, roll), 0f);
+                vc.Source = ControlSource.None;
+                vc.GetComponent<AIDriver>()?.Stop();
+                vc.InputLocked = true;
+                vc.Body.isKinematic = true;
+                StartCoroutine(ReleaseAfter(vc, 1.6f));
+                return;
+            }
             float targetKmh = Mathf.Min(vc.Def.TopSpeedKmh, (e.TargetSpeedKmh > 0 ? e.TargetSpeedKmh : vc.Def.DefaultTargetSpeedKmh) * spec.SpeedFactor);
+            if (spec.Rule == ScoringRule.CrashWall) targetKmh = Mathf.Min(vc.Def.TopSpeedKmh, spec.CrashSpeedKmh);
             float startSpeed = rolling ? targetKmh / 3.6f * Mathf.Clamp01(speedFrac) : 0f;
             var spawn = Map.SpawnPoint(lane);
             if (spawnZ > 0f) spawn.z = Mathf.Min(spawnZ, Map.RampStartZ - 20f);
@@ -158,6 +181,16 @@ namespace Mylti
                 vc.Source = ControlSource.AI;
                 ai?.Begin(Map, Map.LaneX[lane], targetKmh / 3.6f);
             }
+        }
+
+        System.Collections.IEnumerator ReleaseAfter(VehicleController vc, float seconds)
+        {
+            float t = 0f;
+            while (t < seconds) { t += Time.deltaTime; yield return null; }
+            if (vc == null || vc.ReplayMode) yield break;
+            vc.Body.isKinematic = false;
+            vc.Body.linearVelocity = Vector3.zero;
+            vc.Body.WakeUp();
         }
 
         void FixedUpdate()

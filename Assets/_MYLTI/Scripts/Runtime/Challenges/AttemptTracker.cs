@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mylti
 {
-    public enum TrackerState { Approach, OnRamp, Airborne, Landed, Done }
+    public enum TrackerState { Hanging, Approach, OnRamp, Airborne, Landed, Done }
 
     /// <summary>
     /// Observes ONE vehicle during ONE attempt and turns physics into facts (FR-08, FR-12):
@@ -28,8 +28,8 @@ namespace Mylti
         readonly AIDriver ai;
         readonly float stuckSeconds;
         float totalTime, stationary, airTimer, upsideDown, settleStill;
-        float prevVy;
-        bool apexLogged;
+        float prevVy, lastSpeed;
+        bool apexLogged, nearLogged;
         readonly HashSet<string> hitObstacles = new HashSet<string>();
         public float AttemptTimeout = 32f;
 
@@ -42,6 +42,7 @@ namespace Mylti
             Rec.StartProgramTime = log.Now;
             LastMovingProgramTime = log.Now;
             Ev("AttemptStart", null, new Dictionary<string, double> { ["kickerHeight"] = spec.KickerHeight, ["speedFactor"] = spec.SpeedFactor });
+            if (spec.Rule == ScoringRule.DropTest) State = TrackerState.Hanging;
         }
 
         public void Detach()
@@ -53,14 +54,15 @@ namespace Mylti
         /// <summary>Restart after an automatic stuck recovery (same attempt, Retries++).</summary>
         public void RestartAfterRetry()
         {
-            State = TrackerState.Approach;
+            State = Spec.Rule == ScoringRule.DropTest ? TrackerState.Hanging : TrackerState.Approach;
+            nearLogged = false;
             StuckFlag = false;
             totalTime = stationary = airTimer = upsideDown = settleStill = 0;
             apexLogged = false;
             groundBodyHit = false;
             StateTime = 0;
             Rec.MaxSpeedKmh = 0; Rec.PeakHeightM = 0; Rec.TakeoffProgramTime = null; Rec.LandingProgramTime = null;
-            Rec.LandingDistanceM = null; Rec.BodySlam = false; Rec.AirTimeS = 0;
+            Rec.LandingDistanceM = null; Rec.BodySlam = false; Rec.AirTimeS = 0; Rec.ImpactSpeedKmh = null;
             PredictedLandingZ = -1;
         }
 
@@ -96,9 +98,38 @@ namespace Mylti
                 return;
             }
 
+            float preSpeed = lastSpeed;
+            lastSpeed = speed;
             switch (State)
             {
+                case TrackerState.Hanging:
+                    if (!Vehicle.Body.isKinematic)
+                    {
+                        Rec.TakeoffProgramTime = log.Now;
+                        Ev("Drop", null, new Dictionary<string, double> { ["heightM"] = Round1(ctx.DropHeight) });
+                        prevVy = 0f;
+                        SetState(TrackerState.Airborne);
+                    }
+                    else if (StateTime > 6f) { Ev("Timeout", "never released"); Finish(AttemptOutcome.Timeout); }
+                    break;
+
                 case TrackerState.Approach:
+                    if (ctx.CrashWallZ > 0)
+                    {
+                        if (!nearLogged && pos.z > ctx.CrashWallZ - Mathf.Max(8f, speed * 0.45f)) { nearLogged = true; Ev("NearImpact", "wall ahead"); }
+                        if (wallHit)
+                        {
+                            Rec.ImpactSpeedKmh = Round1(preSpeed * 3.6f);
+                            Rec.LandingProgramTime = log.Now;
+                            Ev("WallCrash", null, new Dictionary<string, double> { ["speedKmh"] = Rec.ImpactSpeedKmh.Value });
+                            ai?.Stop();
+                            Vehicle.SetInput(0, 0, 1f);
+                            SetState(TrackerState.Landed);
+                            break;
+                        }
+                        CheckStuck(speed, dt, "stopped before the wall");
+                        break;
+                    }
                     if (pos.z >= ctx.RampStartZ - 1f)
                     {
                         Ev("RampEntered", null, new Dictionary<string, double> { ["speedKmh"] = Round1(speed * 3.6f) });
@@ -129,6 +160,7 @@ namespace Mylti
 
                 case TrackerState.Airborne:
                     Rec.PeakHeightM = Mathf.Max((float)Rec.PeakHeightM, pos.y);
+                    if (!nearLogged && vel.y < -1f && pos.y < Mathf.Max(3f, -vel.y * 0.3f)) { nearLogged = true; Ev("NearImpact", "ground ahead"); }
                     if (!apexLogged && prevVy > 0f && vel.y <= 0f)
                     {
                         apexLogged = true;
@@ -140,16 +172,16 @@ namespace Mylti
                     {
                         Rec.LandingProgramTime = log.Now;
                         Rec.AirTimeS = Round2((float)(log.Now - Rec.TakeoffProgramTime.GetValueOrDefault(log.Now)));
-                        Rec.LandingDistanceM = Round1(pos.z - ctx.LipZ);
+                        Rec.LandingDistanceM = Spec.Rule == ScoringRule.DropTest ? (double?)null : Round1(pos.z - ctx.LipZ);
                         Rec.LandingImpactSpeed = Round1(Mathf.Max(0f, impactVy));
                         if (Vehicle.GroundedWheels == 0 && Rec.LandingImpactSpeed > 5) Rec.BodySlam = true;
                         if (ctx.WallZ > 0) Rec.ClearedWall = pos.z > ctx.WallZ + 1f ? 1 : 0;
                         if (ctx.TargetZ > 0) Rec.TargetError = Round1(Mathf.Abs(pos.z - ctx.TargetZ));
                         var vals = new Dictionary<string, double>
                         {
-                            ["distanceM"] = Rec.LandingDistanceM.Value, ["airTimeS"] = Rec.AirTimeS,
-                            ["impactSpeed"] = Rec.LandingImpactSpeed, ["wheelsDown"] = Vehicle.GroundedWheels
+                            ["airTimeS"] = Rec.AirTimeS, ["impactSpeed"] = Rec.LandingImpactSpeed, ["wheelsDown"] = Vehicle.GroundedWheels
                         };
+                        if (Rec.LandingDistanceM.HasValue) vals["distanceM"] = Rec.LandingDistanceM.Value;
                         if (Rec.TargetError.HasValue) vals["targetErrorM"] = Rec.TargetError.Value;
                         if (Rec.ClearedWall >= 0) vals["clearedWall"] = Rec.ClearedWall;
                         Ev("Landed", null, vals);
@@ -181,6 +213,7 @@ namespace Mylti
         AttemptOutcome LandedOutcome()
         {
             if (!Vehicle.Upright) { Ev("Rollover"); return AttemptOutcome.Rollover; }
+            if (Rec.ImpactSpeedKmh.HasValue) return AttemptOutcome.Crashed;
             return Rec.BodySlam ? AttemptOutcome.RoughLanding : AttemptOutcome.CleanLanding;
         }
 
@@ -205,12 +238,13 @@ namespace Mylti
             return groundBodyHit;
         }
 
-        bool groundBodyHit;
+        bool groundBodyHit, wallHit;
 
         void OnImpact(SurfaceKind kind, float impulse, Vector3 point, string other)
         {
             if (Done) return;
             float dv = impulse / Mathf.Max(1f, Vehicle.Def.MassKg);
+            if (kind == SurfaceKind.Wall) { if (State == TrackerState.Approach) wallHit = true; return; }
             if (kind == SurfaceKind.Obstacle)
             {
                 if (hitObstacles.Add(other))
@@ -244,6 +278,14 @@ namespace Mylti
             if (Done) return;
             Rec.Outcome = outcome;
             Rec.EndProgramTime = log.Now;
+            var dmg = Vehicle.GetComponent<VehicleDamage>();
+            if (dmg != null && outcome != AttemptOutcome.Aborted)
+            {
+                Rec.DamagePercent = Round1(dmg.DamagePercent);
+                Rec.WheelsLost = dmg.WheelsLost;
+                Rec.GlassBroken = dmg.GlassBroken;
+                Ev("Damage", null, new Dictionary<string, double> { ["damagePercent"] = Rec.DamagePercent.Value, ["wheelsLost"] = Rec.WheelsLost, ["glassBroken"] = Rec.GlassBroken ? 1 : 0 });
+            }
             var vals = new Dictionary<string, double> { ["maxSpeedKmh"] = Round1((float)Rec.MaxSpeedKmh) };
             if (Rec.LandingDistanceM.HasValue) vals["distanceM"] = Rec.LandingDistanceM.Value;
             Ev("AttemptEnd", outcome.ToString(), vals);

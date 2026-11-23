@@ -44,7 +44,9 @@ namespace Mylti.Domain
             var cards = new List<VideoCard>();
             var specs = plan.ScoredRounds.ToList();
             var attempts = run.Attempts.Where(a => !a.IsTeaser && a.Outcome != AttemptOutcome.None).ToList();
-            double maxH = specs.Count > 0 ? specs.Max(r => r.KickerHeight) : 0;
+            double maxH = specs.Where(r => r.IsJump).Select(r => (double)r.KickerHeight).DefaultIfEmpty(0).Max();
+            double maxCrash = specs.Where(r => r.Rule == ScoringRule.CrashWall).Select(r => (double)r.CrashSpeedKmh).DefaultIfEmpty(0).Max();
+            double maxDrop = specs.Where(r => r.Rule == ScoringRule.DropTest).Select(r => (double)r.DropHeightM).DefaultIfEmpty(0).Max();
             var rounds = run.Rounds.OrderBy(r => r.RoundIndex).ToList();
 
             // 1. Cold-open hook over the teaser (first seconds — the most important text of the video)
@@ -53,7 +55,8 @@ namespace Mylti.Domain
                 cards.Add(new VideoCard
                 {
                     Id = "hook", Style = CardStyle.Hook, Start = teaser.Start + 0.3, End = Math.Min(teaser.End, teaser.Start + 4.5),
-                    Title = $"{N0(maxH)} METER MEGA RAMP", Subtitle = "WATCH THIS"
+                    Title = maxCrash > 0 ? $"{N0(maxCrash)} KM/H INTO CONCRETE" : maxDrop > 0 ? $"DROPPED FROM {N0(maxDrop)} METERS" : $"{N0(maxH)} METER MEGA RAMP",
+                    Subtitle = "WATCH THIS"
                 });
 
             // 2. Title card: the viewer question + an honest "coming up" teaser of real moments
@@ -61,7 +64,10 @@ namespace Mylti.Domain
             if (title != null)
             {
                 var coming = new List<string>();
+                if (maxCrash > 0) coming.Add($"A {N0(maxCrash)} KM/H WALL CRASH");
+                if (maxDrop > 0) coming.Add($"A {N0(maxDrop)} M DROP");
                 if (maxH > 0) coming.Add($"A {N0(maxH)} M RAMP");
+                if (attempts.Any(a => a.WheelsLost > 0)) coming.Add("FLYING WHEELS");
                 if (specs.Any(r => r.Obstacles == ObstacleSet.CrateWall || r.Obstacles == ObstacleSet.BarrelsAndWall || r.Rule == ScoringRule.BeyondTheWall)) coming.Add("A CRATE WALL");
                 else if (specs.Any(r => r.Obstacles != ObstacleSet.None)) coming.Add("A BARREL LINE");
                 if (specs.Any(r => r.BridgeWidth > 0)) coming.Add("A NARROW BRIDGE");
@@ -106,6 +112,9 @@ namespace Mylti.Domain
                         bool open = ordered.Count < 2 || ordered[0] - ordered[1] <= 2; // final is worth 2 points
                         facts.Add(open ? "EVERYTHING COMES DOWN TO THIS" : "ONE LAST SHOT AT GLORY");
                     }
+                    if (spec.Rule == ScoringRule.CrashWall) facts.Add("THE WALL DOES NOT MOVE");
+                    if (ra.Any(a => a.WheelsLost > 0)) facts.Add("SOMETHING IS ABOUT TO COME OFF");
+                    if (ra.Any(a => a.GlassBroken)) facts.Add("GLASS EVERYWHERE");
                     if (ra.Any(a => a.Outcome == AttemptOutcome.Rollover)) facts.Add("NOT EVERYONE LANDS ON THEIR WHEELS");
                     if (ra.Any(a => a.Outcome == AttemptOutcome.FellOff)) facts.Add("THE BRIDGE CLAIMS A VEHICLE");
                     double roundBest = ra.Where(a => a.ValidLanding && a.LandingDistanceM.HasValue).Select(a => a.LandingDistanceM.Value).DefaultIfEmpty(0).Max();
@@ -134,7 +143,9 @@ namespace Mylti.Domain
                 if (resSeg != null && rr != null)
                 {
                     string best = rr.WinnerVehicleId != null && rr.BestMetric.TryGetValue(rr.WinnerVehicleId, out var m)
-                        ? (rr.Rule == ScoringRule.TargetZone ? $"{m.ToString("0.0", CultureInfo.InvariantCulture)} M FROM TARGET" : $"{m.ToString("0.0", CultureInfo.InvariantCulture)} M")
+                        ? (rr.Rule == ScoringRule.TargetZone ? $"{m.ToString("0.0", CultureInfo.InvariantCulture)} M FROM TARGET"
+                           : RoundScoring.IsDamageRule(rr.Rule) ? $"LEAST DAMAGE: {m.ToString("0", CultureInfo.InvariantCulture)}%"
+                           : $"{m.ToString("0.0", CultureInfo.InvariantCulture)} M")
                         : "";
                     cards.Add(new VideoCard
                     {
@@ -172,7 +183,10 @@ namespace Mylti.Domain
 
         static string Headline(RoundSpec r)
         {
+            if (r.Rule == ScoringRule.CrashWall) return $"CRASH TEST · {N0(r.CrashSpeedKmh)} KM/H INTO CONCRETE" + (r.HeadToHead ? " · ALL AT ONCE" : "");
+            if (r.Rule == ScoringRule.DropTest) return $"DROP TEST · {N0(r.DropHeightM)} M CRANE" + (r.HeadToHead ? " · ALL AT ONCE" : "");
             var parts = new List<string> { $"{N0(r.KickerHeight)} M KICKER" };
+            if (r.Rule == ScoringRule.LeastDamage) parts.Add("LEAST DAMAGE WINS");
             if (r.BridgeWidth > 0) parts.Add($"{r.BridgeWidth.ToString("0.#", CultureInfo.InvariantCulture)} M BRIDGE");
             switch (r.Obstacles)
             {
@@ -228,15 +242,17 @@ Reply JSON only: {""hooks"":[{""id"":""round1"",""hook"":""...""}]}";
         {
             string h = hook.ToLowerInvariant();
             if (hook.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length > 9) return "too long";
-            foreach (var tm in ClaimChecker.Trademarks) if (ClaimChecker.ContainsWord(h, tm)) return "brand";
+            if (ClaimChecker.FindBlockedBrand(h) != null) return "brand";
             if (VehicleCatalog.All.Any(v => h.Contains(v.DisplayNameEn.ToLowerInvariant())) && (h.Contains("win") || h.Contains("champion") || h.Contains("beat"))) return "names a winner";
             var allowed = new HashSet<string>();
             foreach (var f in card.TeaserFacts.Concat(new[] { card.Title ?? "", card.Subtitle ?? "" }))
                 foreach (var n in ClaimChecker.ExtractNumbers(f)) allowed.Add(n);
             foreach (var n in ClaimChecker.ExtractNumbers(hook)) if (!allowed.Contains(n)) return "number " + n;
-            bool rolloverFact = card.TeaserFacts.Any(f => f.Contains("WHEELS") || f.Contains("ROLLOVER"));
+            bool rolloverFact = card.TeaserFacts.Any(f => f.Contains("LANDS ON THEIR WHEELS") || f.Contains("ROLLOVER"));
+            bool crashFact = card.TeaserFacts.Any(f => f.Contains("WALL DOES NOT MOVE") || f.Contains("CRASH")) || (card.Subtitle ?? "").Contains("CRASH TEST");
+            if (!crashFact && !rolloverFact && h.Contains("crash")) return "crash not in facts";
             bool fallFact = card.TeaserFacts.Any(f => f.Contains("BRIDGE CLAIMS") || f.Contains("FALL"));
-            if (!rolloverFact && (h.Contains("crash") || h.Contains("flip") || h.Contains("roll"))) return "rollover not in facts";
+            if (!rolloverFact && (h.Contains("flip") || h.Contains("roll"))) return "rollover not in facts";
             if (!fallFact && (h.Contains("fall") || h.Contains("plunge"))) return "fall not in facts";
             return null;
         }

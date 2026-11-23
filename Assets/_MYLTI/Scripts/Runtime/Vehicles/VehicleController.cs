@@ -33,6 +33,7 @@ namespace Mylti
         public bool Airborne => GroundedWheels == 0 && !BodyTouching;
         public bool Upright => transform.up.y > 0.35f;
         public bool ReplayMode { get; private set; }
+        public string ModelNotes = "";   // how the 3D model was fitted (shown in the Vehicles tab)
 
         /// <summary>(kind, impulse N·s, contact point, other object name). Raised for body collisions.</summary>
         public event Action<SurfaceKind, float, Vector3, string> Impact;
@@ -169,6 +170,7 @@ namespace Mylti
         public void Teleport(Vector3 pos, Quaternion rot, float forwardSpeed)
         {
             SetReplayMode(false);
+            if (Body.isKinematic) Body.isKinematic = false; // e.g. still hanging from a drop-test crane
             Body.position = pos;
             Body.rotation = rot;
             transform.SetPositionAndRotation(pos, rot);
@@ -180,6 +182,8 @@ namespace Mylti
             Body.WakeUp();
             var fx = GetComponent<SpeedFx>();
             if (fx != null) fx.ClearTrails();
+            var dmg = GetComponent<VehicleDamage>();
+            if (dmg != null) dmg.Repair();
         }
 
         /// <summary>Replay mode: physics disabled, pose driven by recorded data.</summary>

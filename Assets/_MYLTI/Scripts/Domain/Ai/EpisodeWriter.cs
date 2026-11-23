@@ -96,17 +96,18 @@ namespace Mylti.Domain
     /// </summary>
     public static class EpisodeWriter
     {
-        static readonly string[] Twists = { "obstacles", "target", "wall", "landing", "speed", "bridge" };
+        static readonly string[] Twists = { "obstacles", "target", "wall", "landing", "speed", "bridge", "crash", "crash_drop", "crash_wall" };
         static readonly string[] Palette = { "#D12B38", "#2C82D3", "#E8A33D", "#2DBE6C", "#8E44AD", "#F1C40F", "#ECF0F1", "#222831" };
 
         public const string SystemPrompt =
-@"You are the showrunner of a YouTube channel that publishes 10-minute 3D vehicle challenge episodes made in a game simulation (rigid-body physics, generic placeholder vehicles, a configurable Mega Ramp arena).
+@"You are the showrunner of a YouTube channel that publishes 10-minute 3D vehicle challenge episodes made in a game simulation (rigid-body physics with simulated body damage, 3D vehicle models, a configurable Mega Ramp arena with a crash wall and a drop crane).
 You design the CHALLENGE, never the result: outcomes come from the physics simulation and are reported honestly later.
 Rules:
 - Every episode must feel new compared with the episode history you are given: change the series, twist, vehicle line-up, rule sequence or geometry. Do not reuse a previous viewer question or title.
-- Design exactly 6 rounds: 5 escalating rounds and a decisive final. Each round must change at least one meaningful variable (height, angle, speed, obstacles, rule, bridge, landing ramp). Not just colours.
+- Design exactly 6 rounds: 5 escalating rounds and a decisive final. Each round must change at least one meaningful variable (height, angle, speed, obstacles, rule, crash speed, drop height, bridge, landing ramp). Not just colours.
+- Mix jumps with crash tests (CrashWall) and drop tests (DropTest) — viewers love seeing what survives; build up the speeds and heights.
 - Round roles in order: Baseline, Complication, Reversal, Escalation, Extreme, Decisive. The final (Decisive) is always head-to-head.
-- Use only generic vehicle names from the catalogue. No real brands, no real people, no claims of real-world physics, realistic damage or scientific proof.
+- Use the vehicle names exactly as written in the catalogue and no other brand names. No real people, no claims of real-world physics, realistic damage, real crash-test results or scientific proof — it is a game simulation.
 - English, short, punchy, curiosity-driven but truthful wording. Titles must be phrased as a question or a neutral challenge statement (no invented outcomes).
 Reply with ONE JSON object only, no prose.";
 
@@ -115,7 +116,7 @@ Reply with ONE JSON object only, no prose.";
             var w = new JsonWriter(true);
             w.BeginObject();
             w.Key("vehicleCatalogue").BeginArray();
-            foreach (var d in VehicleCatalog.All)
+            foreach (var d in VehicleCatalog.Selectable)
                 w.BeginObject().Prop("id", d.Id).Prop("name", d.DisplayNameEn).Prop("massKg", d.MassKg).Prop("topSpeedKmhInGame", d.TopSpeedKmh)
                  .Prop("defaultTargetSpeedKmh", d.DefaultTargetSpeedKmh).EndObject();
             w.EndArray();
@@ -125,7 +126,7 @@ Reply with ONE JSON object only, no prose.";
             w.Key("parameterRanges").BeginObject()
                 .Prop("kickerHeight", "2..30 metres").Prop("kickerAngle", "8..40 degrees").Prop("speedFactor", "0.4..1.3 (multiplies each vehicle's target speed)")
                 .Prop("obstacles", "None | BarrelLine | CrateWall | BarrelsAndWall")
-                .Prop("rule", "FurthestValidLanding | CleanLandingOnly | TargetZone | BeyondTheWall")
+                .Prop("rule", "FurthestValidLanding | CleanLandingOnly | TargetZone | BeyondTheWall | LeastDamage (jump, least body damage wins) | CrashWall (drive into a concrete wall at crashSpeedKmh 30-160, least damage wins) | DropTest (dropped from a crane at dropHeightM 5-60, least damage wins)")
                 .Prop("bridgeWidth", "0 (none) or 3..8 metres; trucks are 2.4 m wide").Prop("landingRamp", "true/false").Prop("headToHead", "true = all vehicles at once").EndObject();
             w.Prop("difficulty", difficulty);
             w.Prop("seed", seed);
@@ -138,7 +139,7 @@ Reply with ONE JSON object only, no prose.";
                 .Prop("seriesId", "one of seriesIds").Prop("twistKind", "one of twistKinds").Prop("vehicles", "[\"id\", ...]")
                 .Prop("viewerQuestion", "string").Prop("viewerPromise", "string").Prop("stakes", "string").Prop("centralConflict", "string")
                 .Prop("keyVisual", "string").Prop("workingTitle", "string (<= 70 chars)").Prop("unexpectedPossibleOutcome", "string")
-                .Prop("rounds", "[6 x {role, kickerHeight, kickerAngle, speedFactor, obstacles, rule, bridgeWidth, landingRamp, headToHead, subQuestion}]")
+                .Prop("rounds", "[6 x {role, kickerHeight, kickerAngle, speedFactor, obstacles, rule, crashSpeedKmh, dropHeightM, bridgeWidth, landingRamp, headToHead, subQuestion}]")
                 .EndObject();
             w.EndObject();
             return "Design the next episode. Context:\n" + w;
@@ -199,6 +200,8 @@ Reply with ONE JSON object only, no prose.";
                     Rule = ScenarioConfig.ParseEnum(MiniJson.GetString(r, "rule"), ScoringRule.FurthestValidLanding),
                     BridgeWidth = (float)MiniJson.GetDouble(r, "bridgeWidth", 0),
                     LandingRamp = MiniJson.GetBool(r, "landingRamp", false),
+                    CrashSpeedKmh = (float)MiniJson.GetDouble(r, "crashSpeedKmh", 60 + i * 12),
+                    DropHeightM = (float)MiniJson.GetDouble(r, "dropHeightM", 12 + i * 5),
                     HeadToHead = i == 5 || MiniJson.GetBool(r, "headToHead", false),
                     AttemptPasses = 1,
                     MaxExtraPasses = 2
@@ -207,7 +210,7 @@ Reply with ONE JSON object only, no prose.";
                 if (spec.BridgeWidth > 0 && spec.BridgeWidth < entrants.Max(e => e.Def.Width) + 0.8f) spec.BridgeWidth = entrants.Max(e => e.Def.Width) + 0.8f;
                 rounds.Add(spec);
             }
-            if (rounds[4].KickerHeight < rounds[0].KickerHeight) rounds[4].KickerHeight = Math.Min(30, rounds[0].KickerHeight + 8);
+            if (rounds[4].IsJump && rounds[0].IsJump && rounds[4].KickerHeight < rounds[0].KickerHeight) rounds[4].KickerHeight = Math.Min(30, rounds[0].KickerHeight + 8);
             RunPlanner.RefreshRoundTexts(rounds, entrants, ContentLanguage.en);
             for (int i = 0; i < 6; i++)
             {
@@ -240,7 +243,7 @@ Reply with ONE JSON object only, no prose.";
             };
             // reject branded or "realism" wording in Claude's creative text
             foreach (var field in new[] { concept.ViewerQuestion, concept.ViewerPromise, concept.WorkingTitle, concept.Stakes })
-                if (ClaimChecker.Trademarks.Any(t => field.ToLowerInvariant().Contains(t)) || field.ToLowerInvariant().Contains("real-world"))
+                if (ClaimChecker.FindBlockedBrand(field.ToLowerInvariant()) != null || field.ToLowerInvariant().Contains("real-world"))
                 {
                     error = "Claude used a brand or real-world claim: " + field;
                     return null;
@@ -284,7 +287,7 @@ Reply with ONE JSON object only, no prose.";
             bool pickVehicles, string difficulty, int seed)
         {
             var rng = new Random(seed);
-            var lineups = new List<string[]> { new[] { "sport_01", "truck_01" }, new[] { "sport_01", "suv_01" }, new[] { "suv_01", "truck_01" }, new[] { "sport_01", "suv_01", "truck_01" } };
+            var lineups = VehicleCatalog.Lineups();
             var candidates = new List<(string series, string twist, string[] lineup, int lastUsed)>();
             foreach (var series in ConceptGenerator.SeriesIds)
                 foreach (var twist in ConceptGenerator.TwistsFor(series))

@@ -320,7 +320,7 @@ namespace Mylti
 
             if (!abortRequested && Remaining(deadline) > 6.0 + 9.0)
             {
-                var best = Run.Attempts.Where(a => a.RoundIndex == spec.Index && !a.IsTeaser && a.TakeoffProgramTime.HasValue && !replayed.Contains(a.AttemptId))
+                var best = Run.Attempts.Where(a => a.RoundIndex == spec.Index && !a.IsTeaser && (a.TakeoffProgramTime.HasValue || a.ImpactSpeedKmh.HasValue) && !replayed.Contains(a.AttemptId))
                                        .OrderByDescending(a => HighlightScorer.Score(a, isFinal)).FirstOrDefault();
                 if (best != null)
                 {
@@ -418,7 +418,7 @@ namespace Mylti
             Log.EndSegment();
 
             // best moments not shown yet (real recorded replays, one per round, best first)
-            var candidates = Run.Attempts.Where(a => !a.IsTeaser && a.TakeoffProgramTime.HasValue && !replayed.Contains(a.AttemptId))
+            var candidates = Run.Attempts.Where(a => !a.IsTeaser && (a.TakeoffProgramTime.HasValue || a.ImpactSpeedKmh.HasValue) && !replayed.Contains(a.AttemptId))
                                          .GroupBy(a => a.RoundIndex)
                                          .Select(g => g.OrderByDescending(a => HighlightScorer.Score(a, a.RoundIndex == finalSpec.Index)).First())
                                          .OrderByDescending(a => HighlightScorer.Score(a, a.RoundIndex == finalSpec.Index))
@@ -476,17 +476,20 @@ namespace Mylti
             else Session.AbortAll("replay");
             Session.ParkAll(); // nothing may stand in the replayed vehicle's path
 
-            double from = Math.Max(take.Start, (a.TakeoffProgramTime ?? a.StartProgramTime) - 1.5);
-            double to = Math.Min(take.End, (a.LandingProgramTime ?? a.EndProgramTime) + 2.2);
-            const float speed = 0.6f;
-            if ((to - from) / speed > maxSeconds) to = from + maxSeconds * speed;
+            bool crash = a.ImpactSpeedKmh.HasValue;
+            double impact = a.LandingProgramTime ?? -1;
+            double from = crash ? Math.Max(take.Start, impact - 2.2) : Math.Max(take.Start, (a.TakeoffProgramTime ?? a.StartProgramTime) - 1.5);
+            double to = Math.Min(take.End, (a.LandingProgramTime ?? a.EndProgramTime) + (crash ? 2.6 : 2.2));
+            float speed = crash ? 0.8f : 0.6f;
+            double slowAt = impact > 0 && (crash || a.DamagePercent >= 15 || a.Outcome == AttemptOutcome.Rollover || a.BodySlam) ? impact : -1;
+            while (to - from > 1.0 && ReplaySystem.Duration(from, to, speed, slowAt) > maxSeconds) to -= 0.25;
             if (to - from < 1.0) yield break;
 
             var items = Session.Vehicles.Values.Select(v => v.GetComponent<Replayable>()).Concat(Session.Map.Obstacles).ToList();
             var subjects = Session.Vehicles.Values.Where(v => take.Tracks.ContainsKey(v.Def.Id)).Select(v => v.transform).ToList();
             Cam.FocusOverride = subjects;
             Cam.ImpactLandingZOverride = Session.Map.LipZ + (float)(a.LandingDistanceM ?? 40.0);
-            Cam.Forced = a.Outcome == AttemptOutcome.Rollover || a.BodySlam ? Shot.ReplayLow : Shot.ReplaySide;
+            Cam.Forced = crash ? Shot.WallCam : Session.Map.DropZ > 0 ? Shot.DropCam : a.Outcome == AttemptOutcome.Rollover || a.BodySlam ? Shot.ReplayLow : Shot.ReplaySide;
             Cam.Snap();
             var def = VehicleCatalog.Find(a.VehicleId);
             Overlay.SetReplay(L($"Round {a.RoundIndex} · {def.DisplayName(Lang)}", $"Vòng {a.RoundIndex} · {def.DisplayName(Lang)}"));
@@ -494,7 +497,7 @@ namespace Mylti
             Log.Log("ReplayShown", a.RoundIndex, a.AttemptIndex, a.VehicleId,
                 string.Format(CultureInfo.InvariantCulture, "{0} [{1:0.0}–{2:0.0}s] ×{3}", take.TakeId, from, to, speed));
             replayed.Add(a.AttemptId);
-            yield return StartCoroutine(Replay.Play(take, from, to, speed, items));
+            yield return StartCoroutine(Replay.Play(take, from, to, speed, items, slowAt));
             Replay.ReleaseItems(items);
             Overlay.SetReplay(null);
             Log.EndSegment();
@@ -576,6 +579,13 @@ namespace Mylti
                     break;
                 case "Landed":
                     if (e.Values.TryGetValue("impactSpeed", out var v) && v > 9) Cam.AddShake(0.2f);
+                    break;
+                case "NearImpact":
+                    lastApexTime = Clock.Time - 0.5; // teaser cliffhanger: cut just before the hit
+                    break;
+                case "WallCrash":
+                    Cam.AddShake(0.35f);
+                    if (tracker != null && !tracker.Rec.IsTeaser) Frames.Request(tracker.Rec.AttemptId, e.Id, 7f);
                     break;
             }
         }

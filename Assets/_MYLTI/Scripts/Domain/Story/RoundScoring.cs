@@ -15,7 +15,17 @@ namespace Mylti.Domain
         public static bool Qualifies(AttemptRecord a, ScoringRule rule, out double metric)
         {
             metric = 0;
-            if (!a.Scored || a.IsTeaser || !a.LandingDistanceM.HasValue) return false;
+            if (!a.Scored || a.IsTeaser) return false;
+            if (IsDamageRule(rule))
+            {
+                if (!a.DamagePercent.HasValue) return false;
+                if (rule == ScoringRule.CrashWall && !a.ImpactSpeedKmh.HasValue) return false;
+                if (rule == ScoringRule.LeastDamage && !a.LandingDistanceM.HasValue) return false;
+                if (rule == ScoringRule.DropTest && !(a.ValidLanding || a.Outcome == AttemptOutcome.Rollover)) return false;
+                metric = a.DamagePercent.Value;
+                return true;
+            }
+            if (!a.LandingDistanceM.HasValue) return false;
             switch (rule)
             {
                 case ScoringRule.CleanLandingOnly:
@@ -33,6 +43,10 @@ namespace Mylti.Domain
             }
         }
 
+        public static bool IsDamageRule(ScoringRule r) => r == ScoringRule.LeastDamage || r == ScoringRule.CrashWall || r == ScoringRule.DropTest;
+        public static bool LowerIsBetter(ScoringRule r) => r == ScoringRule.TargetZone || IsDamageRule(r);
+        public static string Unit(ScoringRule r) => IsDamageRule(r) ? "%" : " m";
+
         public static RoundResult Evaluate(RoundSpec spec, IList<AttemptRecord> attempts, IList<Entrant> entrants,
             ContentLanguage lang, bool isFinal)
         {
@@ -46,7 +60,8 @@ namespace Mylti.Domain
             };
             var roundAttempts = attempts.Where(a => a.RoundIndex == spec.Index && !a.IsTeaser).ToList();
             res.AttemptIds = roundAttempts.Select(a => a.AttemptId).ToList();
-            bool lowerBetter = spec.Rule == ScoringRule.TargetZone;
+            bool lowerBetter = LowerIsBetter(spec.Rule);
+            bool damage = IsDamageRule(spec.Rule);
 
             foreach (var e in entrants)
             {
@@ -69,20 +84,24 @@ namespace Mylti.Domain
             if (ordered.Count > 1 && Math.Abs(ordered[0].Value - ordered[1].Value) < 0.1)
             {
                 res.WinnerVehicleId = null;
-                res.Explanation = L(lang, $"Tie at {F1(ordered[0].Value)} m — no single winner.", $"Hòa ở {F1(ordered[0].Value)} m — không có xe thắng duy nhất.");
+                res.Explanation = L(lang, $"Tie at {F1(ordered[0].Value)}{Unit(spec.Rule)} — no single winner.", $"Hòa ở {F1(ordered[0].Value)}{Unit(spec.Rule)} — không có xe thắng duy nhất.");
                 return res;
             }
             res.WinnerVehicleId = ordered[0].Key;
             var wDef = VehicleCatalog.Find(res.WinnerVehicleId);
             string name = wDef?.DisplayName(lang) ?? res.WinnerVehicleId;
-            if (lowerBetter)
+            if (damage)
+                res.Explanation = L(lang, $"{name} has the least damage: {F1(ordered[0].Value)}%.", $"{name} hư hại ít nhất: {F1(ordered[0].Value)}%.");
+            else if (lowerBetter)
                 res.Explanation = L(lang, $"{name} landed {F1(ordered[0].Value)} m from the target.", $"{name} tiếp đất cách mục tiêu {F1(ordered[0].Value)} m.");
             else
                 res.Explanation = L(lang, $"{name} wins with a {F1(ordered[0].Value)} m landing.", $"{name} thắng với cú tiếp đất {F1(ordered[0].Value)} m.");
             if (ordered.Count > 1)
             {
                 var second = VehicleCatalog.Find(ordered[1].Key)?.DisplayName(lang) ?? ordered[1].Key;
-                res.Explanation += lowerBetter
+                res.Explanation += damage
+                    ? L(lang, $" {second}: {F1(ordered[1].Value)}% damage.", $" {second}: hư hại {F1(ordered[1].Value)}%.")
+                    : lowerBetter
                     ? L(lang, $" {second}: {F1(ordered[1].Value)} m off.", $" {second}: lệch {F1(ordered[1].Value)} m.")
                     : L(lang, $" {second}: {F1(ordered[1].Value)} m.", $" {second}: {F1(ordered[1].Value)} m.");
             }
@@ -158,6 +177,10 @@ namespace Mylti.Domain
             if (a.BodySlam) s += 1.2;
             s += Math.Min(4, a.ObstacleHits) * 0.7;
             if (a.ClearedWall > 0.5) s += 1;
+            if (a.DamagePercent.HasValue) s += a.DamagePercent.Value / 18.0;
+            if (a.ImpactSpeedKmh.HasValue) s += 1.5 + a.ImpactSpeedKmh.Value / 40.0;
+            s += a.WheelsLost * 1.5;
+            if (a.GlassBroken) s += 0.8;
             if (isFinal) s += 1.5;
             if (a.IsTeaser) s -= 1; // teaser footage is already used as the hook
             return Math.Round(s, 2);
@@ -173,6 +196,9 @@ namespace Mylti.Domain
             if (a.Outcome == AttemptOutcome.FellOff) parts.Add(vi ? "rơi khỏi đường" : "fell off");
             if (a.ObstacleHits > 0) parts.Add(vi ? $"va {a.ObstacleHits} chướng ngại" : $"hit {a.ObstacleHits} obstacle(s)");
             if (a.ClearedWall > 0.5) parts.Add(vi ? "vượt tường" : "cleared the wall");
+            if (a.ImpactSpeedKmh.HasValue) parts.Add(vi ? $"đâm tường {a.ImpactSpeedKmh.Value:0} km/h" : $"wall crash at {a.ImpactSpeedKmh.Value:0} km/h");
+            if (a.DamagePercent.HasValue && a.DamagePercent.Value >= 20) parts.Add(vi ? $"hư hại {a.DamagePercent.Value:0}%" : $"{a.DamagePercent.Value:0}% damage");
+            if (a.WheelsLost > 0) parts.Add(vi ? "văng bánh" : "lost a wheel");
             return parts.Count == 0 ? (vi ? "lượt chạy" : "run") : string.Join(", ", parts);
         }
 

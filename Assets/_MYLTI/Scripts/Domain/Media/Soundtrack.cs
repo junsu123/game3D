@@ -86,13 +86,14 @@ namespace Mylti.Domain
     /// <summary>
     /// Builds the final audio track offline on the PROGRAM timeline, so it is frame-exact with the
     /// fixed-frame-rate video: narration clips + synthesised engine/wind/impact sound design + a quiet bed.
-    /// All sound is generated here or comes from the TTS voice — no third-party music or samples.
+    /// Sound design is generated here; music comes only from files the owner puts in the Music folder.
     /// </summary>
     public sealed class Soundtrack
     {
         public readonly int Rate;
         readonly float[] voice;
         readonly float[] fx;
+        float[] music;
         readonly Random rng = new Random(1234);
 
         public Soundtrack(double seconds, int rate = 44100)
@@ -178,6 +179,52 @@ namespace Mylti.Domain
             }
         }
 
+        /// <summary>Metal crunch for a crash: noise burst + decaying metallic partials, scaled 0..1.</summary>
+        public void AddCrash(double at, float strength01, bool glass = false)
+        {
+            float k = Math.Max(0.15f, Math.Min(1f, strength01));
+            int s0 = (int)(at * Rate);
+            int len = (int)(Rate * (0.6 + 0.9 * k));
+            double[] partials = { 87, 143, 211, 389, 577, 1013 };
+            float lp = 0, hp = 0, prev = 0;
+            for (int i = 0; i < len && s0 + i < fx.Length; i++)
+            {
+                if (s0 + i < 0) continue;
+                float t = (float)i / Rate;
+                float n = (float)rng.NextDouble() * 2f - 1f;
+                lp += (n - lp) * 0.25f;
+                float body = lp * (float)Math.Exp(-t * 7) * 1.1f;
+                float ring = 0;
+                for (int p = 0; p < partials.Length; p++)
+                    ring += (float)Math.Sin(2 * Math.PI * partials[p] * (1 + 0.002 * p) * t) * (float)Math.Exp(-t * (4 + p * 2.5)) / (p + 1.5f);
+                float thump = (float)Math.Sin(2 * Math.PI * 48 * t) * (float)Math.Exp(-t * 8);
+                float sample = (body + ring * 0.9f + thump * 1.2f) * (0.25f + 0.65f * k);
+                if (glass && t > 0.03f)
+                {
+                    hp = 0.92f * (hp + n - prev);
+                    prev = n;
+                    sample += hp * (float)Math.Exp(-(t - 0.03f) * 5) * 0.35f * (rng.NextDouble() < 0.02 ? 3f : 1f);
+                }
+                fx[s0 + i] += sample;
+            }
+        }
+
+        /// <summary>Background music (owner-supplied file), looped over the program with fades; ducked under the voice.</summary>
+        public void AddMusic(float[] track, float gain = 0.22f)
+        {
+            if (track == null || track.Length < Rate) return;
+            music = new float[voice.Length];
+            int fadeIn = Rate * 2, fadeOut = Rate * 4;
+            int total = voice.Length - Rate;
+            for (int i = 0; i < total; i++)
+            {
+                float g = gain;
+                if (i < fadeIn) g *= i / (float)fadeIn;
+                if (i > total - fadeOut) g *= Math.Max(0, (total - i) / (float)fadeOut);
+                music[i] = track[i % track.Length] * g;
+            }
+        }
+
         /// <summary>Very quiet outdoor bed across the whole program so there is never digital silence.</summary>
         public void AddBed(float gain = 0.012f)
         {
@@ -202,7 +249,7 @@ namespace Mylti.Domain
                 float target = v > 0.02f ? 1f : 0f;
                 env += (target - env) * (target > env ? attack * 30 : release * 3);
                 env = Math.Max(0, Math.Min(1, env));
-                outp[i] = voice[i] * 0.95f + fx[i] * (1f - 0.65f * env);
+                outp[i] = voice[i] * 0.95f + fx[i] * (1f - 0.65f * env) + (music != null ? music[i] * (1f - 0.72f * env) : 0f);
             }
             float peak = 0;
             foreach (var x in outp) peak = Math.Max(peak, Math.Abs(x));

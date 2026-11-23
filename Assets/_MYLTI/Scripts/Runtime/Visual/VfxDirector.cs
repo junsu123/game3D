@@ -11,7 +11,7 @@ namespace Mylti
     {
         public static VfxDirector Instance { get; private set; }
         public ChallengeSession Session;
-        ParticleSystem dust, sparks, debris, kick;
+        ParticleSystem dust, sparks, debris, kick, glassFx, smoke;
 
         void Awake() { Instance = this; }
 
@@ -28,6 +28,8 @@ namespace Mylti
             sparks = Make("VFX_Sparks", cube, MaterialFactory.Get(new Color(1f, 0.55f, 0.15f), 0.9f, 0f, true), 0.45f, 11f, 0.06f, 0.14f, 1.2f, 400);
             debris = Make("VFX_Debris", cube, MaterialFactory.Get(new Color(0.45f, 0.32f, 0.2f), 0.2f), 1.6f, 7f, 0.15f, 0.4f, 1.6f, 300);
             kick = Make("VFX_WheelDust", sphere, MaterialFactory.Get(new Color(0.66f, 0.6f, 0.5f), 0.05f), 0.9f, 2.5f, 0.25f, 0.7f, -0.02f, 600);
+            glassFx = Make("VFX_Glass", cube, MaterialFactory.Get(new Color(0.75f, 0.9f, 1f), 0.98f, 0.1f), 1.4f, 6f, 0.03f, 0.09f, 1.5f, 800);
+            smoke = Make("VFX_Smoke", sphere, MaterialFactory.Get(new Color(0.28f, 0.28f, 0.3f), 0.02f), 3.5f, 1.6f, 1.2f, 3.2f, -0.06f, 400);
         }
 
         static Mesh BuiltinMesh(PrimitiveType t)
@@ -74,6 +76,18 @@ namespace Mylti
             pr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             ps.Play();
             return ps;
+        }
+
+        /// <summary>Glass shards bursting out of a window.</summary>
+        public void GlassShatter(Vector3 pos, Vector3 carVelocity) => Emit(glassFx, pos, 90);
+
+        /// <summary>Sparks, debris and a puff of smoke at a body impact, scaled by the damage it caused.</summary>
+        public void ImpactBurst(Vector3 pos, float damage)
+        {
+            int n = Mathf.Clamp((int)(damage * 2.5f), 6, 60);
+            Emit(sparks, pos, n);
+            Emit(debris, pos, n / 2);
+            if (damage > 12f) Emit(smoke, pos + Vector3.up * 0.5f, Mathf.Clamp((int)damage, 8, 40));
         }
 
         /// <summary>Small puff behind a fast rear wheel.</summary>

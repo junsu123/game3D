@@ -129,12 +129,35 @@ namespace Mylti.Domain
             {
                 list[1].Obstacles = ObstacleSet.BarrelLine;
             }
+            if (seriesId == "CrashLab")
+            {
+                // jump → crash wall → drop → harder crash → higher drop → least-damage mega jump (all together)
+                list[1].Rule = ScoringRule.CrashWall; list[1].CrashSpeedKmh = 50;
+                list[2].Rule = ScoringRule.DropTest; list[2].DropHeightM = (float)Math.Round(15 * hMul);
+                list[3].Rule = ScoringRule.CrashWall; list[3].CrashSpeedKmh = 90;
+                list[4].Rule = ScoringRule.DropTest; list[4].DropHeightM = (float)Math.Round(35 * hMul);
+                list[5].Rule = ScoringRule.LeastDamage;
+            }
 
             // Twist modifiers (rounds 3–5 carry the twist; the final stays decisive)
             string tw = twist ?? "obstacles";
             if (tw.StartsWith("bridge_")) tw = tw.Substring(7);
             switch (tw)
             {
+                case "crash":
+                    if (seriesId == "CrashLab") break;
+                    list[2].Rule = ScoringRule.CrashWall; list[2].CrashSpeedKmh = 70;
+                    list[3].Rule = ScoringRule.DropTest; list[3].DropHeightM = (float)Math.Round(22 * hMul);
+                    list[4].Rule = ScoringRule.LeastDamage;
+                    break;
+                case "crash_drop":
+                    list[3].Rule = ScoringRule.DropTest; list[3].DropHeightM = (float)Math.Round(45 * hMul);
+                    list[4].Rule = ScoringRule.LeastDamage; list[4].Obstacles = ObstacleSet.CrateWall;
+                    break;
+                case "crash_wall":
+                    list[2].Rule = ScoringRule.CrashWall; list[2].CrashSpeedKmh = 70; list[2].HeadToHead = true;
+                    list[4].Rule = ScoringRule.CrashWall; list[4].CrashSpeedKmh = 130;
+                    break;
                 case "obstacles":
                     list[2].Obstacles = ObstacleSet.BarrelLine;
                     list[3].Obstacles = ObstacleSet.CrateWall;
@@ -186,8 +209,11 @@ namespace Mylti.Domain
             {
                 bool fin = r.Role == RoundRole.Decisive;
                 string roleName = RoleName(r.Role, lang);
-                r.Title = fin ? L(lang, $"FINAL — {r.KickerHeight:0} m kicker", $"CHUNG KẾT — dốc {r.KickerHeight:0} m")
-                              : L(lang, $"Round {r.Index} — {roleName}: {r.KickerHeight:0} m kicker", $"Vòng {r.Index} — {roleName}: dốc {r.KickerHeight:0} m");
+                string what = r.Rule == ScoringRule.CrashWall ? L(lang, $"Crash Test at {r.CrashSpeedKmh:0} km/h", $"Đâm tường {r.CrashSpeedKmh:0} km/h")
+                            : r.Rule == ScoringRule.DropTest ? L(lang, $"{r.DropHeightM:0} m Drop Test", $"Thả rơi {r.DropHeightM:0} m")
+                            : L(lang, $"{r.KickerHeight:0} m kicker", $"dốc {r.KickerHeight:0} m");
+                r.Title = fin ? L(lang, $"FINAL — {what}", $"CHUNG KẾT — {what}")
+                              : L(lang, $"Round {r.Index} — {roleName}: {what}", $"Vòng {r.Index} — {roleName}: {what}");
                 r.ChangeSummary = DescribeChange(prev, r, lang);
                 r.SubQuestion = SubQuestion(r, entrants, lang);
                 prev = r;
@@ -214,6 +240,9 @@ namespace Mylti.Domain
                 case ScoringRule.CleanLandingOnly: return L(lang, "Only clean, upright landings count", "Chỉ tính cú tiếp đất sạch, xe còn đứng");
                 case ScoringRule.TargetZone: return L(lang, $"Land closest to the {r.TargetDistance:0} m target", $"Tiếp đất gần mục tiêu {r.TargetDistance:0} m nhất");
                 case ScoringRule.BeyondTheWall: return L(lang, $"Land beyond the crate wall at {r.WallDistance:0} m", $"Tiếp đất vượt tường thùng ở {r.WallDistance:0} m");
+                case ScoringRule.LeastDamage: return L(lang, "The landing with the least damage wins", "Cú tiếp đất ít hư hại nhất thắng");
+                case ScoringRule.CrashWall: return L(lang, $"Hit the concrete wall at {r.CrashSpeedKmh:0} km/h — least damage wins", $"Đâm tường bê tông ở {r.CrashSpeedKmh:0} km/h — xe ít hư hại nhất thắng");
+                case ScoringRule.DropTest: return L(lang, $"Dropped from {r.DropHeightM:0} m — least damage wins", $"Thả rơi từ {r.DropHeightM:0} m — xe ít hư hại nhất thắng");
                 default: return L(lang, "Longest upright landing wins", "Cú tiếp đất xa nhất (xe còn đứng) thắng");
             }
         }
@@ -222,7 +251,9 @@ namespace Mylti.Domain
         {
             if (prev == null) return L(lang, "Baseline: everyone sets a first distance", "Mốc chuẩn: mỗi xe lập khoảng cách đầu tiên");
             var parts = new List<string>();
-            if (Math.Abs(r.KickerHeight - prev.KickerHeight) > 0.1f) parts.Add(L(lang, $"kicker {prev.KickerHeight:0}→{r.KickerHeight:0} m", $"dốc {prev.KickerHeight:0}→{r.KickerHeight:0} m"));
+            if (r.Rule == ScoringRule.CrashWall && (prev.Rule != ScoringRule.CrashWall || Math.Abs(r.CrashSpeedKmh - prev.CrashSpeedKmh) > 0.5f)) parts.Add(L(lang, $"crash speed {r.CrashSpeedKmh:0} km/h", $"tốc độ đâm {r.CrashSpeedKmh:0} km/h"));
+            if (r.Rule == ScoringRule.DropTest && (prev.Rule != ScoringRule.DropTest || Math.Abs(r.DropHeightM - prev.DropHeightM) > 0.1f)) parts.Add(L(lang, $"drop height {r.DropHeightM:0} m", $"độ cao thả {r.DropHeightM:0} m"));
+            if (r.IsJump && Math.Abs(r.KickerHeight - prev.KickerHeight) > 0.1f) parts.Add(L(lang, $"kicker {prev.KickerHeight:0}→{r.KickerHeight:0} m", $"dốc {prev.KickerHeight:0}→{r.KickerHeight:0} m"));
             if (Math.Abs(r.SpeedFactor - prev.SpeedFactor) > 0.01f) parts.Add(L(lang, $"speed ×{r.SpeedFactor:0.00}", $"tốc độ ×{r.SpeedFactor:0.00}"));
             if (r.Obstacles != prev.Obstacles) parts.Add(L(lang, $"obstacles: {r.Obstacles}", $"chướng ngại: {r.Obstacles}"));
             if (r.Rule != prev.Rule) parts.Add(L(lang, $"rule: {RuleText(r.Rule, r, lang)}", $"luật: {RuleText(r.Rule, r, lang)}"));
@@ -235,6 +266,9 @@ namespace Mylti.Domain
         static string SubQuestion(RoundSpec r, IList<Entrant> entrants, ContentLanguage lang)
         {
             var heavy = entrants.Select(e => e.Def).OrderByDescending(d => d.MassKg).First();
+            if (r.Rule == ScoringRule.CrashWall) return L(lang, $"Which one survives a {r.CrashSpeedKmh:0} km/h wall crash best?", $"Xe nào chịu cú đâm tường {r.CrashSpeedKmh:0} km/h tốt nhất?");
+            if (r.Rule == ScoringRule.DropTest) return L(lang, $"What is left after a {r.DropHeightM:0} m drop?", $"Còn lại gì sau cú rơi {r.DropHeightM:0} m?");
+            if (r.Rule == ScoringRule.LeastDamage) return L(lang, $"Who comes down from {r.KickerHeight:0} m in one piece?", $"Xe nào rơi từ {r.KickerHeight:0} m mà vẫn nguyên vẹn?");
             switch (r.Role)
             {
                 case RoundRole.Baseline: return L(lang, "Who sets the first benchmark?", "Ai lập mốc đầu tiên?");

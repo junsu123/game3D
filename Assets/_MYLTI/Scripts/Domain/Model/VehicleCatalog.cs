@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace Mylti.Domain
 {
     /// <summary>
-    /// Engine-agnostic vehicle definition. All vehicles are generic, original placeholder designs
-    /// (no real-world brands). Units: metres, kilograms, newton-metres, km/h.
+    /// Engine-agnostic vehicle definition. Built-in vehicles are generic placeholder designs; user vehicles
+    /// come from 3D model files the channel owner adds (see UserVehicles). Units: metres, kilograms, newton-metres, km/h.
     /// </summary>
     public sealed class VehicleDefinition
     {
@@ -31,6 +31,17 @@ namespace Mylti.Domain
         public float AirStability;         // angular damping applied while airborne
         public float Downforce;            // N per (m/s)^2
 
+        // ---- user 3D models (empty for the built-in placeholders)
+        public bool IsUserModel;
+        public string Brand = "";          // e.g. "Toyota" — shown in titles only when real brand names are enabled
+        public string ModelName = "";      // e.g. "Hilux"
+        public string ModelFile = "";      // absolute path to .glb/.gltf, or "res:Vehicles/Name" for a prefab in Resources
+        public float ModelYawDeg;          // rotate the model so its nose points to +Z
+        public float ModelLengthM;         // real length used to scale the model (0 = auto)
+        public bool Repaint;               // false = keep the model's own paint
+        public float PowerKw;
+        public string LicenseNote = "";
+
         public string DisplayName(ContentLanguage lang) => lang == ContentLanguage.vi ? DisplayNameVi : DisplayNameEn;
         public string ClassNoun(ContentLanguage lang) => lang == ContentLanguage.vi ? ClassNounVi : ClassNounEn;
         public float PowerToWeight => MotorTorquePerWheel * 4f / WheelRadius / MassKg; // m/s² (approx.)
@@ -38,6 +49,56 @@ namespace Mylti.Domain
 
     public static class VehicleCatalog
     {
+        /// <summary>When true, the brand words of user vehicles may appear in titles, narration and cards.</summary>
+        public static bool RealBrandsAllowed;
+
+        public static void RegisterUser(VehicleDefinition d)
+        {
+            if (d == null || string.IsNullOrEmpty(d.Id)) return;
+            d.IsUserModel = true;
+            all.RemoveAll(x => string.Equals(x.Id, d.Id, StringComparison.OrdinalIgnoreCase));
+            all.Add(d);
+        }
+
+        public static void ClearUser() => all.RemoveAll(x => x.IsUserModel);
+
+        public static IEnumerable<VehicleDefinition> UserVehicles => all.FindAll(x => x.IsUserModel);
+
+        /// <summary>Vehicles offered to the episode writers: the user's real models when there are at least two.</summary>
+        public static IReadOnlyList<VehicleDefinition> Selectable
+        {
+            get
+            {
+                var user = all.FindAll(x => x.IsUserModel);
+                return user.Count >= 2 ? user : (IReadOnlyList<VehicleDefinition>)all;
+            }
+        }
+
+        /// <summary>All pairs and triples of selectable vehicles (capped) for the offline rotation.</summary>
+        public static List<string[]> Lineups()
+        {
+            var ids = new List<string>();
+            foreach (var d in Selectable) ids.Add(d.Id);
+            var list = new List<string[]>();
+            for (int i = 0; i < ids.Count; i++)
+                for (int j = i + 1; j < ids.Count; j++)
+                    list.Add(new[] { ids[i], ids[j] });
+            for (int i = 0; i < ids.Count && list.Count < 40; i++)
+                for (int j = i + 1; j < ids.Count; j++)
+                    for (int k = j + 1; k < ids.Count && list.Count < 40; k++)
+                        list.Add(new[] { ids[i], ids[j], ids[k] });
+            return list;
+        }
+
+        /// <summary>A trademark word may be used when real brands are enabled and it belongs to a user vehicle.</summary>
+        public static bool IsAllowedBrand(string trademarkLower)
+        {
+            if (!RealBrandsAllowed || string.IsNullOrEmpty(trademarkLower)) return false;
+            foreach (var d in all)
+                if (d.IsUserModel && ((d.Brand ?? "") + " " + (d.ModelName ?? "") + " " + (d.DisplayNameEn ?? "")).ToLowerInvariant().Contains(trademarkLower)) return true;
+            return false;
+        }
+
         private static readonly List<VehicleDefinition> all = new List<VehicleDefinition>
         {
             new VehicleDefinition

@@ -45,6 +45,12 @@ namespace Mylti.Domain
         public ObstacleSet Obstacles = ObstacleSet.None;
         public float WallDistance = 70f;  // m from lip (crate wall)
         public float TargetDistance = 60f; // m from lip (target zone)
+        public float CrashSpeedKmh = 80f;  // CrashWall: AI speed into the barrier
+        public float DropHeightM = 20f;    // DropTest: crane height
+
+        /// <summary>Jump rounds use the ramp; crash-wall and drop-test rounds do not.</summary>
+        public bool IsJump => Rule != ScoringRule.CrashWall && Rule != ScoringRule.DropTest;
+        public bool DamageScored => Rule == ScoringRule.LeastDamage || Rule == ScoringRule.CrashWall || Rule == ScoringRule.DropTest;
 
         public bool HeadToHead;           // all vehicles start together
         public int AttemptPasses = 1;     // mandatory passes (each pass = one attempt per vehicle)
@@ -64,7 +70,7 @@ namespace Mylti.Domain
                 .Prop("speedFactor", SpeedFactor).Prop("runwayLengthMeters", RunwayLength)
                 .Prop("bridgeWidthMeters", BridgeWidth).Prop("landingRamp", LandingRamp)
                 .Prop("obstacles", Obstacles.ToString()).Prop("wallDistanceMeters", WallDistance)
-                .Prop("targetDistanceMeters", TargetDistance).Prop("headToHead", HeadToHead)
+                .Prop("targetDistanceMeters", TargetDistance).Prop("crashSpeedKmh", CrashSpeedKmh).Prop("dropHeightMeters", DropHeightM).Prop("headToHead", HeadToHead)
                 .Prop("attemptPasses", AttemptPasses).Prop("maxExtraPasses", MaxExtraPasses)
                 .Prop("budgetSeconds", BudgetSeconds).Prop("scored", Scored)
                 .EndObject();
@@ -199,6 +205,10 @@ namespace Mylti.Domain
         public int Retries;
         public double ClearedWall = -1;      // -1 n/a, 0 no, 1 yes
         public double? TargetError;          // |landing - target| for TargetZone rule
+        public double? DamagePercent;        // body damage 0–100 at the end of the attempt (game estimate from impacts)
+        public double? ImpactSpeedKmh;       // CrashWall: speed when hitting the barrier
+        public int WheelsLost;
+        public bool GlassBroken;
         public List<int> EventIds = new List<int>();
 
         public bool ValidLanding => Outcome == AttemptOutcome.CleanLanding || Outcome == AttemptOutcome.RoughLanding;
@@ -216,7 +226,9 @@ namespace Mylti.Domain
                 .Prop("landingDistanceMeters", LandingDistanceM.HasValue ? Math.Round(LandingDistanceM.Value, 1) : (double?)null)
                 .Prop("landingImpactSpeed", Math.Round(LandingImpactSpeed, 1)).Prop("bodySlam", BodySlam)
                 .Prop("obstacleHits", ObstacleHits).Prop("retries", Retries).Prop("clearedWall", ClearedWall)
-                .Prop("targetError", TargetError);
+                .Prop("targetError", TargetError).Prop("damagePercent", DamagePercent.HasValue ? Math.Round(DamagePercent.Value, 1) : (double?)null)
+                .Prop("impactSpeedKmh", ImpactSpeedKmh.HasValue ? Math.Round(ImpactSpeedKmh.Value, 0) : (double?)null)
+                .Prop("wheelsLost", WheelsLost).Prop("glassBroken", GlassBroken);
             w.Key("eventIds"); w.Value(EventIds);
             w.EndObject();
         }

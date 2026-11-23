@@ -67,8 +67,15 @@ namespace Mylti.Domain
 
             var cands = new List<(string cat, List<string> options)>();
 
+            string S = fs.MaxCrashSpeedKmh.HasValue ? Num(fs.MaxCrashSpeedKmh.Value) : null;
+            string D = fs.MaxDropHeightM.HasValue ? Num(fs.MaxDropHeightM.Value) : null;
+
             // Curiosity
             var cur = new List<string>();
+            if (S != null && heavy != null)
+                cur.Add(vi ? $"{heavy.Name} Có Chịu Nổi Cú Đâm Tường {S} km/h?" : $"Can the {heavy.Name} Survive a {S} km/h Wall Crash?");
+            if (D != null && heavy != null)
+                cur.Add(vi ? $"Điều Gì Xảy Ra Khi Thả {heavy.Name} Từ {D}m?" : $"What Happens When You Drop the {heavy.Name} From {D}m?");
             if (H != null && heavy != null)
             {
                 cur.Add(vi ? $"{heavy.Name} Có Sống Sót Qua Mega Ramp {H}m?" : $"Can {Art(heavy.ClassNoun)} {Cap(heavy.ClassNoun)} Survive {A(H)} {H}m Mega Ramp?");
@@ -89,6 +96,10 @@ namespace Mylti.Domain
 
             // Extreme challenge
             var ex = new List<string>();
+            if (S != null && D != null)
+                ex.Add(vi ? $"{versus}: Đâm Tường {S} km/h, Thả Rơi {D}m" : $"{versus}: {S} km/h Wall Crash & {D}m Drop Test");
+            else if (S != null)
+                ex.Add(vi ? $"{versus}: Thử Nghiệm Đâm Tường {S} km/h" : $"{versus}: {S} km/h Crash Test");
             if (longestV != null && fs.LongestJump.Number.HasValue && fs.LongestJumpKickerM.HasValue)
             {
                 string LH = Num(fs.LongestJumpKickerM.Value); // kicker of the round where that jump really happened
@@ -119,6 +130,8 @@ namespace Mylti.Domain
             }
             if (winner != null && rounds > 0)
                 st.Add(vi ? $"{winner.Name} Thắng {winner.RoundWins}/{rounds} Vòng Mega Ramp" : $"{winner.Name} Wins {winner.RoundWins} of {rounds} Mega Ramp Rounds");
+            if (fs.LeastDamageVehicleId != null && fs.MostDamageVehicleId != null && fs.LeastDamageVehicleId != fs.MostDamageVehicleId && (S != null || D != null))
+                st.Add(vi ? $"Xe Nào Bền Nhất? {versus} Qua Thử Nghiệm Va Chạm" : $"Which Is Toughest? {versus} Crash Tests");
             if (rounds > 0) st.Add(vi ? $"{rounds} Vòng, Một Mega Ramp: {versus}" : $"{rounds} Rounds, One Mega Ramp: {versus}");
             st.Add(vi ? $"Một Mega Ramp, Nhiều Vòng: {versus}" : $"One Mega Ramp, Many Rounds: {versus}");
             cands.Add(("StoryDriven", st));
@@ -185,6 +198,8 @@ namespace Mylti.Domain
                 if (fs.HadWallRound) extras.Add(vi ? "tường thùng gỗ" : "a crate wall");
                 if (fs.HadTargetRound) extras.Add(vi ? "vòng mục tiêu" : "a target-zone round");
                 if (fs.HadBridgeRound) extras.Add(vi ? "cầu hẹp trước dốc" : "a narrow bridge before the ramp");
+                if (fs.HadCrashRound) extras.Add(vi ? $"thử nghiệm đâm tường tới {F0(fs.MaxCrashSpeedKmh.Value)} km/h" : $"wall crash tests up to {F0(fs.MaxCrashSpeedKmh.Value)} km/h");
+                if (fs.HadDropRound) extras.Add(vi ? $"thả rơi từ {F0(fs.MaxDropHeightM.Value)} m" : $"drops from up to {F0(fs.MaxDropHeightM.Value)} m");
                 if (extras.Count > 0) sb.Append(vi ? ", kèm " : ", with ").Append(ConceptGenerator.JoinNames(extras, fs.Language, vi ? "và" : "and"));
                 sb.Append(".\n");
             }
@@ -196,7 +211,10 @@ namespace Mylti.Domain
             {
                 specs.TryGetValue(r.RoundIndex, out var spec);
                 string head = r.IsFinal ? (vi ? "Chung kết" : "Final") : (vi ? $"Vòng {r.RoundIndex}" : $"Round {r.RoundIndex}");
-                string kick = spec != null ? (vi ? $" (dốc {F0(spec.KickerHeight)} m)" : $" ({F0(spec.KickerHeight)} m kicker)") : "";
+                string kick = spec == null ? ""
+                    : spec.Rule == ScoringRule.CrashWall ? (vi ? $" (đâm tường {F0(spec.CrashSpeedKmh)} km/h)" : $" (wall crash at {F0(spec.CrashSpeedKmh)} km/h)")
+                    : spec.Rule == ScoringRule.DropTest ? (vi ? $" (thả rơi {F0(spec.DropHeightM)} m)" : $" ({F0(spec.DropHeightM)} m drop)")
+                    : (vi ? $" (dốc {F0(spec.KickerHeight)} m)" : $" ({F0(spec.KickerHeight)} m kicker)");
                 sb.Append("• ").Append(head).Append(kick).Append(": ").Append(r.Explanation).Append('\n');
             }
             sb.Append('\n');
@@ -214,6 +232,13 @@ namespace Mylti.Domain
             }
             if (fs.RolloverCount > 0)
                 moments.Add(vi ? $"Số lần lật xe: {fs.RolloverCount}." : $"Rollovers during the episode: {fs.RolloverCount}.");
+            if (fs.MostDamage?.Number != null)
+            {
+                var mv = fs.V(fs.MostDamageVehicleId);
+                moments.Add(vi ? $"Hư hại nặng nhất: {mv?.Name} — {F0(fs.MostDamage.Number.Value)}% (ước tính trong game)." : $"Heaviest damage: {mv?.Name} — {F0(fs.MostDamage.Number.Value)}% (in-game estimate).");
+            }
+            if (fs.WheelsLostCount > 0)
+                moments.Add(vi ? $"Số bánh xe văng ra: {fs.WheelsLostCount}." : $"Wheels torn off: {fs.WheelsLostCount}.");
             if (moments.Count > 0)
             {
                 sb.Append(vi ? "Khoảnh khắc đáng chú ý:\n" : "Notable moments:\n");
@@ -228,9 +253,22 @@ namespace Mylti.Domain
                 sb.Append('\n');
             }
 
-            sb.Append(vi
-                ? "Đây là mô phỏng trong game 3D (MYLTI Challenge Studio, vật lý thân cứng) — không phải thử nghiệm xe ngoài đời thực và không mô phỏng biến dạng thân xe.\n"
-                : "This is a 3D game simulation made with MYLTI Challenge Studio (rigid-body vehicle physics) — not a real-world vehicle test, and body deformation is not simulated.\n");
+            bool damageEpisode = fs.HadCrashRound || fs.HadDropRound || fs.MostDamage != null;
+            if (damageEpisode)
+                sb.Append(vi
+                    ? "Đây là mô phỏng trong game 3D (MYLTI Challenge Studio) — không phải thử nghiệm va chạm ngoài đời thực. Móp méo và % hư hại là hiệu ứng/ước tính của game, không phản ánh độ an toàn thật của xe.\n"
+                    : "This is a 3D game simulation made with MYLTI Challenge Studio — not a real-world crash test. Dents and damage % are game effects and estimates, not the real safety of any vehicle.\n");
+            else
+                sb.Append(vi
+                    ? "Đây là mô phỏng trong game 3D (MYLTI Challenge Studio) — không phải thử nghiệm xe ngoài đời thực.\n"
+                    : "This is a 3D game simulation made with MYLTI Challenge Studio — not a real-world vehicle test.\n");
+            var brands = fs.Vehicles.Select(x => VehicleCatalog.Find(x.VehicleId)).Where(d => d != null && d.IsUserModel && VehicleCatalog.RealBrandsAllowed && !string.IsNullOrWhiteSpace(d.Brand)).Select(d => d.Brand.Trim()).Distinct().ToList();
+            if (brands.Count > 0)
+                sb.Append(vi
+                    ? $"Tên xe chỉ dùng để nhận diện mẫu 3D; kênh không liên kết hay được tài trợ bởi {string.Join(", ", brands)}.\n"
+                    : $"Vehicle names only identify the 3D models; this channel is not affiliated with or endorsed by {string.Join(", ", brands)}.\n");
+            var credits = fs.Vehicles.Select(x => VehicleCatalog.Find(x.VehicleId)).Where(d => d != null && d.IsUserModel && !string.IsNullOrWhiteSpace(d.LicenseNote)).Select(d => $"{d.DisplayNameEn}: {d.LicenseNote.Trim()}").ToList();
+            if (credits.Count > 0) sb.Append(vi ? "Mẫu 3D: " : "3D models: ").Append(string.Join(" · ", credits)).Append('\n');
             sb.Append(vi
                 ? "Bạn muốn xe nào tham gia thử thách tiếp theo? Bình luận bên dưới và đăng ký kênh để xem tập sau!\n\n"
                 : "Which vehicle should take on the next challenge? Tell us in the comments and subscribe for the next episode!\n\n");
@@ -264,7 +302,14 @@ namespace Mylti.Domain
             if (spec != null && spec.HeadToHead) involved.AddRange(fs.Vehicles);
             else if (attempt != null && fs.V(attempt.VehicleId) != null) involved.Add(fs.V(attempt.VehicleId));
             if (involved.Count == 0) involved.AddRange(fs.Vehicles);
-            string subjects = string.Join(" and ", involved.Select(v => $"a {v.ColorName} generic {v.ClassNoun.ToLowerInvariant()}".Replace("  ", " ")));
+            string Noun(VehicleFacts v)
+            {
+                var d = VehicleCatalog.Find(v.VehicleId);
+                // the owner's real models: describe them by name when brand names are enabled, otherwise by class
+                if (d != null && d.IsUserModel && VehicleCatalog.RealBrandsAllowed && !string.IsNullOrWhiteSpace(d.Brand)) return $"a {v.ColorName} {d.DisplayNameEn}".Replace("  ", " ");
+                return $"a {v.ColorName} {(d != null && d.IsUserModel ? "realistic" : "generic")} {v.ClassNoun.ToLowerInvariant()}".Replace("  ", " ");
+            }
+            string subjects = string.Join(" and ", involved.Select(Noun));
             if (fs.Language == ContentLanguage.vi)
             {
                 // Prompt stays English (spec), but class nouns come from the English catalogue.
@@ -273,6 +318,8 @@ namespace Mylti.Domain
 
             string action;
             if (attempt == null) action = "launching off the lip of a giant mega ramp";
+            else if (attempt.ImpactSpeedKmh.HasValue) action = "smashing head-on into a concrete crash-test wall, front end crumpling, glass and debris flying";
+            else if (spec != null && spec.Rule == ScoringRule.DropTest) action = attempt.Outcome == AttemptOutcome.Rollover ? "falling from a tall yellow crane and hitting the ground on its roof" : "falling nose-first from a tall yellow crane, a moment before hitting the ground";
             else
             {
                 switch (attempt.Outcome)
@@ -284,7 +331,12 @@ namespace Mylti.Domain
                 }
             }
             sb.Append($"Show {subjects} {action}. ");
-            if (spec != null)
+            if (spec != null && !spec.IsJump)
+            {
+                if (spec.Rule == ScoringRule.CrashWall) sb.Append($"A massive concrete barrier with yellow-and-black hazard stripes blocks the runway (crash test at about {spec.CrashSpeedKmh:0} km/h in the game). ");
+                else sb.Append($"Tall yellow cranes hold the vehicles about {spec.DropHeightM:0} m above a striped impact pad. ");
+            }
+            else if (spec != null)
             {
                 sb.Append($"The wooden-and-concrete kicker ramp is clearly visible (about {spec.KickerHeight:0} m tall in the game), with a long asphalt runway behind and a wide grass landing field with distance marker boards ahead. ");
                 if (spec.Obstacles == ObstacleSet.BarrelLine || spec.Obstacles == ObstacleSet.BarrelsAndWall) sb.Append("A line of orange barrels sits in the landing zone. ");
@@ -297,7 +349,9 @@ namespace Mylti.Domain
             sb.Append(string.IsNullOrWhiteSpace(thumbnailText)
                 ? "No text on the image. "
                 : $"Optional bold short text (max 3 words): \"{thumbnailText}\". ");
-            sb.Append("No logos, no real car brands, no license plates, no people, no copyrighted characters. ");
+            sb.Append(VehicleCatalog.RealBrandsAllowed && involved.Any(v => VehicleCatalog.Find(v.VehicleId)?.IsUserModel == true)
+                ? "Keep the real car designs recognisable; no logos added beyond those on the cars, no license plates, no people, no copyrighted characters. "
+                : "No logos, no real car brands, no license plates, no people, no copyrighted characters. ");
             if (!string.IsNullOrEmpty(h?.FrameFile))
                 sb.Append($"Use the attached gameplay reference frame ({h.FrameFile}) and preserve its vehicle types, colours, ramp and obstacle layout.");
             else

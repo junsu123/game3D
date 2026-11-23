@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Mylti
 {
-    public enum Shot { Auto, Chase, SideTracking, LowAngleLip, ImpactCloseup, FixedWide, TopDown, Orbit, Free, Lineup, Flyover, ReplaySide, ReplayLow }
+    public enum Shot { Auto, Chase, SideTracking, LowAngleLip, ImpactCloseup, FixedWide, TopDown, Orbit, Free, Lineup, Flyover, ReplaySide, ReplayLow, WallCam, DropCam }
 
     /// <summary>
     /// Story-aware camera (FR-06, §23.1). Hard cuts between shot types, smooth tracking inside a shot,
@@ -121,6 +121,22 @@ namespace Mylti
             if (live.Count == 0) return Shot.Orbit;
             var lead = live.OrderByDescending(t => (int)t.State).ThenByDescending(t => t.Vehicle.transform.position.z).First();
             Shot s;
+            var m = Session.Map;
+            if (m.CrashWallZ > 0)
+            {
+                if (lead.State == TrackerState.Approach) s = lead.Vehicle.transform.position.z < m.CrashWallZ - 75f ? Shot.Chase : Shot.WallCam;
+                else s = lead.StateTime < 3.2f ? Shot.WallCam : Shot.Orbit;
+                autoLast = s;
+                return s;
+            }
+            if (m.DropZ > 0)
+            {
+                if (lead.State == TrackerState.Hanging) s = Shot.SideTracking;
+                else if (lead.State == TrackerState.Airborne) s = Shot.DropCam;
+                else s = lead.StateTime < 3f ? Shot.DropCam : Shot.Orbit;
+                autoLast = s;
+                return s;
+            }
             switch (lead.State)
             {
                 case TrackerState.Approach:
@@ -193,6 +209,25 @@ namespace Mylti
                     float lz = ImpactLandingZOverride > 0 ? ImpactLandingZOverride : PredictedLanding(map, f);
                     pos = new Vector3(side + 12f, 2.2f, lz + 18f);
                     fov = 42f;
+                    smooth = 0f;
+                    break;
+                }
+                case Shot.WallCam:
+                {
+                    // low, beside the barrier, looking back at the incoming car — the classic crash-test angle
+                    float wz = map.CrashWallZ > 0 ? map.CrashWallZ : f.z + 10f;
+                    pos = new Vector3(side + 4.5f, 1.0f, wz - 2.5f);
+                    look = Vector3.Lerp(new Vector3(0, 1f, wz), f + Vector3.up * 0.6f, 0.75f);
+                    fov = Mathf.Lerp(38f, 60f, Mathf.InverseLerp(60f, 8f, wz - f.z));
+                    smooth = 0f;
+                    break;
+                }
+                case Shot.DropCam:
+                {
+                    float dz = map.DropZ > 0 ? map.DropZ : f.z;
+                    pos = new Vector3(side + 13f, 0.9f, dz - 13f);
+                    look = f + Vector3.up * 0.5f;
+                    fov = 52f;
                     smooth = 0f;
                     break;
                 }

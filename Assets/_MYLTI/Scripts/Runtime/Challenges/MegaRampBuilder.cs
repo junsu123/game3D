@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mylti
 {
-    public enum SurfaceKind { Ground, Runway, Ramp, LandingRamp, Bridge, Obstacle, Scenery }
+    public enum SurfaceKind { Ground, Runway, Ramp, LandingRamp, Bridge, Obstacle, Scenery, Wall }
 
     /// <summary>Marks what a collider is, so vehicles can tell ground contacts from obstacle hits.</summary>
     public sealed class SurfaceTag : MonoBehaviour
@@ -32,6 +32,9 @@ namespace Mylti
         public float LandingRampStartZ = -1, LandingRampEndZ = -1;
         public float WallZ = -1;
         public float TargetZ = -1;
+        public float CrashWallZ = -1;   // CrashWall rounds: concrete barrier across the runway
+        public float DropZ = -1;        // DropTest rounds: cranes hold the vehicles above this point
+        public float DropHeight;
         public float KillY = -4f;
         public float FieldEndZ;
         public float HalfFieldWidth = 140f;
@@ -183,6 +186,17 @@ namespace Mylti
             {
                 ctx.TargetZ = lipZ + spec.TargetDistance;
                 Target(ctx.TargetZ, ctx);
+            }
+            if (spec.Rule == ScoringRule.CrashWall)
+            {
+                ctx.CrashWallZ = Mathf.Min(ctx.RampStartZ - 25f, 230f);
+                CrashBarrier(ctx, ctx.CrashWallZ, spec.CrashSpeedKmh);
+            }
+            if (spec.Rule == ScoringRule.DropTest)
+            {
+                ctx.DropZ = lipZ + 45f;
+                ctx.DropHeight = spec.DropHeightM;
+                Cranes(ctx, ctx.DropZ, spec.DropHeightM);
             }
 
             Scenery(ctx, rng, concrete);
@@ -339,6 +353,47 @@ namespace Mylti
                 }
             }
             MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, 0.03f, z + 1.2f), new Vector3(ctx.RampWidth + 30f, 0.02f, 0.4f), MaterialFactory.Get(new Color(1f, 0.2f, 0.2f)), "WallLine");
+        }
+
+        /// <summary>Immovable reinforced-concrete barrier across all lanes, with a crash-test target face.</summary>
+        void CrashBarrier(MapContext ctx, float z, float speedKmh)
+        {
+            var concrete = MaterialFactory.Textured(TextureFactory.Concrete(), new Vector2(4f, 1.5f), 0.2f, new Color(0.85f, 0.85f, 0.85f));
+            float w = ctx.RampWidth + 14f;
+            var wall = MaterialFactory.Solid(PrimitiveType.Cube, root.transform, new Vector3(0, 2.2f, z + 2f), new Vector3(w, 4.4f, 4f), concrete, "CrashWall");
+            wall.AddComponent<SurfaceTag>().Kind = SurfaceKind.Wall;
+            // yellow/black impact face and a dark backing block so it reads as solid on camera
+            MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, 1.4f, z - 0.02f), new Vector3(w, 2.8f, 0.06f),
+                MaterialFactory.Textured(TextureFactory.Hazard(), new Vector2(w / 2.4f, 1.2f), 0.3f), "CrashFace");
+            MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, 3.2f, z + 7f), new Vector3(w + 4f, 6.4f, 6f), concrete, "CrashBacking");
+            foreach (float x in ctx.LaneX)
+                MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(x, 0.02f, z - 12f), new Vector3(3f, 0.02f, 0.5f), MaterialFactory.Get(new Color(1f, 0.15f, 0.1f)), "ImpactLine");
+            Board(new Vector3(ctx.RampWidth * 0.5f + 10f, 0, z - 30f), Mathf.RoundToInt(speedKmh) + " km/h", true);
+            Board(new Vector3(-ctx.RampWidth * 0.5f - 10f, 0, z - 30f), "CRASH TEST", true);
+        }
+
+        /// <summary>One crane per lane holding the vehicle above the drop point (visual only — no colliders).</summary>
+        void Cranes(MapContext ctx, float z, float height)
+        {
+            var steel = MaterialFactory.Get(new Color(0.95f, 0.72f, 0.1f), 0.35f, 0.4f);
+            var cable = MaterialFactory.Get(new Color(0.08f, 0.08f, 0.08f), 0.5f);
+            float side = ctx.RampWidth * 0.5f + 7f;
+            for (int i = 0; i < ctx.LaneX.Length; i++)
+            {
+                float x = ctx.LaneX[i];
+                float towerX = side + i * 4f;
+                float top = height + 8f;
+                MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(towerX, top * 0.5f, z + i * 0.5f), new Vector3(1.6f, top, 1.6f), steel, "CraneTower");
+                float boomLen = towerX - x + 4f;
+                MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(towerX - boomLen * 0.5f + 2f, top, z), new Vector3(boomLen, 1f, 1f), steel, "CraneBoom");
+                float hookY = height + 3.2f;
+                MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(x, (top + hookY) * 0.5f, z), new Vector3(0.08f, (top - hookY) * 0.5f, 0.08f), cable, "CraneCable");
+                MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(x, hookY, z), new Vector3(1.2f, 0.4f, 0.6f), steel, "CraneHook");
+            }
+            // impact pad
+            MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, 0.012f, z), new Vector3(ctx.RampWidth + 6f, 0.01f, 14f),
+                MaterialFactory.Textured(TextureFactory.Hazard(), new Vector2((ctx.RampWidth + 6f) / 3f, 4f), 0.3f, new Color(0.7f, 0.7f, 0.7f)), "DropPad");
+            Board(new Vector3(-ctx.RampWidth * 0.5f - 10f, 0, z - 14f), Mathf.RoundToInt(height) + " m DROP", true);
         }
 
         void AddProp(MapContext ctx, GameObject go, float mass, string id)

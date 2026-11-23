@@ -116,6 +116,8 @@ namespace Mylti.Domain
             r.WallDistance = Clamp(r.WallDistance, 25, 200, warnings, label + ".wallDistance");
             r.TargetDistance = Clamp(r.TargetDistance, 20, 200, warnings, label + ".targetDistance");
             r.BudgetSeconds = Clamp(r.BudgetSeconds, 20, 200, warnings, label + ".budgetSeconds");
+            r.CrashSpeedKmh = Clamp(r.CrashSpeedKmh, 30, 160, warnings, label + ".crashSpeedKmh");
+            r.DropHeightM = Clamp(r.DropHeightM, 5, 60, warnings, label + ".dropHeightM");
             if (r.AttemptPasses < 1) r.AttemptPasses = 1;
             if (r.AttemptPasses > 3) r.AttemptPasses = 3;
             if (r.MaxExtraPasses < 0) r.MaxExtraPasses = 0;

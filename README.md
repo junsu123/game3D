@@ -3,9 +3,9 @@
 Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:00**: chọn concept → lập kế hoạch 5 vòng + chung kết → chạy & quay một take liền mạch → xác minh tệp video → sinh **YouTube Content Pack** (5 tiêu đề, mô tả SEO, 3 cặp title/thumbnail prompt) chỉ từ dữ kiện thật → Quality Gate.
 
 > **Trạng thái kiểm thử (trung thực):**
-> - ✅ Toàn bộ 64 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder.
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **46/46 test** chạy đạt bằng .NET 8 (thêm: lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
-> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows, chưa tải video thật lên YouTube** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
+> - ✅ Toàn bộ 71 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder và nhánh nạp mẫu xe .glb (glTFast).
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **56/56 test** chạy đạt bằng .NET 8 (thêm: vòng đâm tường/thả rơi chấm theo hư hại, nạp mẫu xe thật + công tắc tên hãng, đọc HDRI, trộn nhạc/tiếng va chạm, lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows, chưa tải video thật lên YouTube, chưa nạp thử mẫu xe .glb thật, chưa xem móp méo/HDRI trên màn hình** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
 
@@ -55,6 +55,31 @@ Tab **📅 Lịch & Đăng**:
    - Máy phải bật và đã đăng nhập Windows lúc chạy.
 5. Lưu ý chính sách: YouTube không cho kiếm tiền với nội dung *sản xuất hàng loạt hoặc lặp lại*. App có cơ chế chống trùng nhưng không thể đảm bảo kênh được duyệt kiếm tiền. Không nên đăng quá dày; nên xem lại các tập đầu.
 
+## 🚗 Xe thật, móp méo, thử thách va chạm
+
+**Xe giống ngoài đời thực** — dùng mẫu 3D do bạn tải về (app không tự có mẫu xe hãng):
+1. Lần đầu mở dự án, Unity hỏi cài **glTFast** → *Cài ngay* (hoặc menu **MYLTI ▸ Install glTFast**).
+2. Tải mẫu xe dạng **.glb/.gltf** (Sketchfab, CGTrader, Unity Asset Store…) → tab **Xe** ▸ *Mở thư mục Vehicles* → thả file vào → *Nạp lại xe*. (File .fbx: đặt vào `Assets/_MYLTI/Resources/Vehicles`.)
+3. App tự: xoay mũi xe về phía trước, chỉnh kích thước thật, đặt xuống đất, **tìm 4 bánh** (theo tên `wheel/tire/rim…`, không có thì theo hình dạng), gắn bánh quay + giảm xóc + va chạm, tách kính để vỡ. Kết quả hiện ngay dưới tên xe (vd. “wheels found by name” / “model faces backwards → yawDeg 180”).
+4. Mỗi mẫu có file `<tên>.vehicle.json` (app tạo sẵn, sửa được trong tab Xe): hãng, mẫu, **tên chung**, loại (hatchback/sedan/sports/supercar/suv/pickup/van/truck/bus), khối lượng, công suất, tốc độ tối đa, chiều dài thật, xoay, **giấy phép/tác giả**. Vật lý (mô-men, phanh, lò xo, chống lật) tính từ các số này. Có ≥ 2 xe thật → Auto Episode chỉ dùng xe thật.
+5. **Tên hãng**: công tắc *Dùng tên hãng thật* (mặc định bật). Bật: tiêu đề/lời bình/chữ trên video gọi đúng “Toyota Hilux”; mô tả video tự ghi “mô phỏng game, không phải thử nghiệm va chạm thật; kênh không liên kết với {hãng}” + dòng ghi công tác giả mẫu 3D. Tên hãng KHÁC (không có trong xe của bạn) vẫn bị chặn để không bịa. Tắt: dùng tên chung (“Pickup Truck”).
+   ⚠️ Tên/logo/kiểu dáng xe là nhãn hiệu của hãng: có rủi ro khiếu nại; tránh mẫu ghi *Editorial use only* nếu kênh kiếm tiền; mẫu CC-BY phải ghi tên tác giả (dán vào ô Giấy phép).
+
+**Móp méo khi va chạm** (mọi xe, kể cả 3 xe mẫu): thân xe lõm theo điểm va chạm (biến dạng lưới đỉnh, nếp nhăn), **vỡ kính** (mảnh kính bay), **văng bánh** khi đâm mạnh cạnh bánh, tia lửa + khói. **% hư hại** là ước tính của game (tăng dần, bão hoà về 100 %; xe nặng khung chắc hơn) — dùng để chấm điểm, không phải độ an toàn thật. Replay chiếu lại đúng trình tự: xe còn nguyên trước cú va, móp đúng lúc va. Thanh *Độ móp khi va chạm* 0–2.5×.
+
+**Thử thách mới** (series **Crash Lab** + twist *crash / crash_drop / crash_wall* cho các series khác; Claude cũng được dùng):
+- **Đâm tường bê tông** ở tốc độ đặt trước (30–160 km/h): xe ít hư hại nhất thắng; ghi tốc độ lúc va thật.
+- **Thả rơi từ cần cẩu** (5–60 m), xe chúi mũi: xe ít hư hại nhất thắng (lật vẫn tính, hư hại thường nặng hơn).
+- **Nhảy ít hư hại nhất** (Mega Ramp, chấm theo hư hại thay vì khoảng cách).
+- Ví dụ Crash Lab: nhảy 6 m → đâm 50 km/h → thả 15 m → đâm 90 km/h → thả 35 m → chung kết nhảy cùng lúc, ít hư hại nhất thắng.
+
+**Quay như phim**: góc máy cạnh tường nhìn xe lao tới, góc thấp dưới cần cẩu, **replay chiếu chậm 0.2× đúng lúc va chạm** (chậm dần vào, nhanh dần ra), rung máy theo lực va, teaser mở đầu cắt ngay trước cú va (giữ tò mò), thumbnail lấy khung hình lúc va.
+
+**Nhạc nền & bầu trời thật**:
+- Thả nhạc (.mp3/.wav/.m4a/.ogg) vào thư mục **Music** (nút trong tab ▶ Auto Episode) — mỗi tập một bài, tự nhỏ đi khi có lời bình, fade đầu/cuối. Chỉ dùng nhạc bạn có quyền dùng trên YouTube (gợi ý: YouTube Studio ▸ Audio Library).
+- **Bầu trời HDRI chụp thật** (Poly Haven, CC0, tự tải vài MB một lần): skybox + ánh sáng môi trường + phản chiếu trên thân xe/kính. Có thể thả file .hdr của bạn vào thư mục **Sky**. Không tải được → dùng bầu trời mặc định.
+- Âm thanh va chạm kim loại + vỡ kính được tổng hợp theo đúng thời điểm và lực va.
+
 ## Đồ hoạ
 
 - **Xe**: thân xe bo tròn dựng thủ tục (loft các mặt cắt superellipse) — xe thể thao có kính bong bóng, sọc đua, cánh gió; SUV có giá nóc; xe tải có cabin + thùng hàng; mâm 5 chấu, đèn phát sáng. Va chạm vẫn dùng hộp đơn giản (ổn định).
@@ -64,7 +89,7 @@ Tab **📅 Lịch & Đăng**:
 - **Khi xe chạy**: tên xe + tốc độ km/h nổi trên đầu xe (luôn quay về camera, cỡ chữ không đổi theo khoảng cách, ẩn tốc độ khi phát lại chậm), vệt đèn hậu đỏ khi > 70 km/h, bụi tung từ bánh sau khi chạy nhanh, camera bám đuôi mở rộng góc nhìn theo tốc độ.
 - Chất lượng Low / Medium / High ở tab Camera.
 
-**Không dùng nhãn hiệu xe thật** (tên, logo, kiểu dáng đặc trưng): xe là thiết kế chung chung tự tạo; `ClaimChecker` chặn tên hãng trong tiêu đề/mô tả/lời bình.
+3 xe mẫu có sẵn là thiết kế chung chung tự tạo. Xe hãng thật chỉ đến từ mẫu 3D bạn thêm (xem phần trên); `ClaimChecker` chỉ cho phép tên hãng của chính các xe đó.
 
 ## 1. Cài đặt trên Windows 11 (3 bước)
 
@@ -78,7 +103,7 @@ Tab **📅 Lịch & Đăng**:
 
 Không cần mạng, tài khoản hay API trả phí. Dữ liệu người dùng nằm tại
 `%USERPROFILE%\AppData\LocalLow\MYLTI\MYLTI Challenge Studio\` (menu **MYLTI ▸ Open Data Folder**):
-`Presets/`, `Runs/<runId>/`, `settings.json`, `episode_history.json`.
+`Presets/`, `Runs/<runId>/`, `Vehicles/` (mẫu xe 3D), `Music/`, `Sky/`, `settings.json`, `episode_history.json`.
 
 ## 2. Dùng thử nhanh
 
@@ -119,7 +144,7 @@ Không cần mạng, tài khoản hay API trả phí. Dữ liệu người dùng
 ## 5. Nguyên tắc “không bịa” đã cài sẵn
 
 - `MetadataGenerator` chỉ đọc `ContentFactSheet` (dựng từ telemetry). Số liệu thiếu = `null` → câu chữ bớt cụ thể, không đoán.
-- `ClaimChecker` từ chối: số không có trong fact sheet; “crash/rollover/fell off” khi không có sự kiện đó; “wins/winner” khi không có người thắng; nhãn hiệu thật (Ferrari, BeamNG…); “realistic damage / real-world physics / scientific proof”. Câu hỏi (“Who Wins?”) được phép.
+- `ClaimChecker` từ chối: số không có trong fact sheet; “crash/rollover/fell off” khi không có sự kiện đó; “wins/winner” khi không có người thắng; nhãn hiệu không thuộc xe của bạn (Ferrari, BeamNG…); “realistic damage / real-world physics / scientific proof”. Câu hỏi (“Who Wins?”) được phép.
 - Không có `CaptureVerified` nếu chưa đọc được tệp và thời lượng. `PublishReady` luôn cần chủ kênh duyệt.
 - Bộ tạo nội dung là **template offline có điều kiện — không phải AI**. Interface `IContentGenerator` để gắn LLM sau (tuỳ chọn, kết quả vẫn bị ClaimChecker kiểm tra lại và rơi về offline nếu sai/lỗi mạng).
 
@@ -127,8 +152,11 @@ Không cần mạng, tài khoản hay API trả phí. Dữ liệu người dùng
 
 - **Chưa chạy thử trong Unity**: cần tinh chỉnh vật lý (bán kính chuyển dốc, lò xo, ổn định trên không, AI bám làn) khi bấm Play lần đầu.
 - Unity Recorder chỉ có trong Editor; bản build dùng OBS. Không có trình giải mã video: app kiểm tra container/thời lượng/track âm thanh, **không** xác nhận phát được — hãy mở tệp xem thử.
-- Một bản đồ Mega Ramp (có biến thể cầu hẹp, thùng phuy, tường thùng, vòng mục tiêu, dốc tiếp đất). Crash Wall / Drop Test / Obstacle Run riêng là P1.
-- Thân xe cứng, không biến dạng; âm thanh động cơ/va chạm là tổng hợp thủ tục (bản quyền tự có). Chưa có nhạc nền/lời bình.
+- Một bản đồ Mega Ramp (biến thể: cầu hẹp, thùng phuy, tường thùng, vòng mục tiêu, dốc tiếp đất, tường bê tông đâm thẳng, cần cẩu thả rơi). Obstacle Run riêng là P1.
+- Vật lý xe vẫn là thân cứng + bánh WheelCollider; móp méo chỉ là **hình ảnh** (khối va chạm không đổi), không phải mô phỏng kết cấu như BeamNG. Mẫu xe ít đa giác sẽ móp thô; mẫu quá nặng (> 250k đỉnh mỗi phần) bỏ qua móp.
+- Dò bánh xe tự động có thể sai với mẫu đặt tên lạ → xem ghi chú dưới tên xe; bánh không tìm thấy thì xe vẫn chạy nhưng bánh không quay.
+- Bản .exe: shader của glTFast + skybox được thêm vào *Always Included Shaders* khi build; nếu mẫu xe hiện màu hồng trong .exe, hãy quay bằng Editor.
+- Đường tải HDRI theo API công khai của Poly Haven — nếu Poly Haven đổi API, thả file .hdr thủ công vào thư mục Sky.
 - Chỉ 16:9 1920×1080. 9:16, quay phân đoạn + tự dựng, timeline scrub cho replay, Analytics import, Underdog Comeback series: P1.
 - Mật khẩu OBS chỉ lưu khi bạn bật “Nhớ mật khẩu” (dạng văn bản trong `settings.json` trên máy bạn).
 - Giao diện IMGUI dùng font mặc định của Unity; dấu tiếng Việt dựa vào font dự phòng của Windows.

@@ -149,6 +149,33 @@ namespace Mylti
             s.BurnTextCards = GUILayout.Toggle(s.BurnTextCards, " Tiêu đề hook đầu video, giới thiệu từng thử thách, câu gây tò mò, kết quả vòng");
             GUILayout.Label("Câu hook chỉ “nhá” những gì THẬT SỰ xảy ra ở cảnh sau (lấy từ kết quả đã quay), không bao giờ lộ người thắng trước. Có Claude key thì Claude viết lại cho cuốn hơn (vẫn bị kiểm tra).", small);
 
+            // ---------------------------------------------------- Music & sky
+            GUILayout.Space(8);
+            GUILayout.Label("Nhạc nền & bầu trời", h2);
+            s.MusicEnabled = GUILayout.Toggle(s.MusicEnabled, " Nhạc nền từ thư mục Music (mỗi tập lấy một bài, tự nhỏ đi khi có lời bình)");
+            if (s.MusicEnabled)
+            {
+                s.MusicVolume = Slider("Âm lượng nhạc", s.MusicVolume, 0f, 1f, "0.00");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Mở thư mục Music", GUILayout.Width(180))) OpenFolder(System.IO.Path.Combine(app.DataRoot, "Music"));
+                GUILayout.Label("Chỉ dùng nhạc bạn có quyền dùng trên YouTube — ví dụ tải từ YouTube Studio ▸ Audio Library (miễn phí, không bị Content ID).", small);
+                GUILayout.EndHorizontal();
+            }
+            bool sky = GUILayout.Toggle(s.UseHdriSky, " Bầu trời chụp thật (HDRI miễn phí CC0 từ Poly Haven) + phản chiếu trên thân xe");
+            if (sky != s.UseHdriSky) { s.UseHdriSky = sky; if (sky) app.StartCoroutine(app.Sky.Load(app.DataRoot, s.HdriId, app.Msg)); }
+            if (s.UseHdriSky)
+            {
+                GUILayout.BeginHorizontal();
+                foreach (var id in HdriSky.Suggested)
+                    if (GUILayout.Toggle(s.HdriId == id, id.Replace("_puresky", "").Replace('_', ' '), GUI.skin.button, GUILayout.Width(200)) && s.HdriId != id)
+                    {
+                        s.HdriId = id;
+                        app.StartCoroutine(app.Sky.Load(app.DataRoot, id, app.Msg));
+                    }
+                GUILayout.EndHorizontal();
+                if (!string.IsNullOrEmpty(app.Sky.Status)) GUILayout.Label(app.Sky.Status + " (có thể thả file .hdr của bạn vào thư mục Sky)", small);
+            }
+
             // ---------------------------------------------------- Recording
             GUILayout.Space(8);
             GUILayout.Label("Tự quay màn hình (FFmpeg)", h2);

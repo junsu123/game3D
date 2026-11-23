@@ -246,6 +246,29 @@ namespace Mylti
             Set(aN, StepState.Running, "Đang dựng âm thanh…");
             string mixPath = Path.Combine(audioDir, "final_mix.wav");
             var speedTracks = S.SoundDesignEnabled ? App.Replay.ExportSpeedTracks() : new List<SpeedTrack>();
+            // background music: owner's own files in <data>/Music (rotates per episode); converted with FFmpeg
+            float[] musicSamples = null;
+            string musicName = null;
+            if (S.MusicEnabled)
+            {
+                string musicDir = Path.Combine(App.DataRoot, "Music");
+                Directory.CreateDirectory(musicDir);
+                var musicFiles = Directory.GetFiles(musicDir).Where(f => new[] { ".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac" }.Contains(Path.GetExtension(f).ToLowerInvariant())).OrderBy(f => f).ToList();
+                if (musicFiles.Count > 0)
+                {
+                    string pick = musicFiles[Episodes.Items.Count % musicFiles.Count];
+                    string musicWav = Path.Combine(audioDir, "music.wav");
+                    var mconv = Ffmpeg.RunAsync($"-y -hide_banner -loglevel error -i {FfmpegTool.Q(pick)} -ac 1 -ar 44100 -c:a pcm_s16le {FfmpegTool.Q(musicWav)}", 120000);
+                    while (!mconv.IsCompleted) yield return null;
+                    if (!mconv.IsFaulted && mconv.Result.ExitCode == 0 && File.Exists(musicWav))
+                    {
+                        try { musicSamples = Wav.ReadMono(musicWav, out _); musicName = Path.GetFileName(pick); }
+                        catch (Exception e) { App.Msg("Music: " + e.Message); }
+                    }
+                    else App.Msg("Music file could not be read: " + Path.GetFileName(pick));
+                }
+            }
+            float musicGain = Mathf.Clamp01(S.MusicVolume) * 0.4f;
             var attempts = run.Attempts.ToList();
             var events = run.Events.ToList();
             var segments = run.Segments.ToList();
@@ -265,7 +288,10 @@ namespace Mylti
                         if (e.Type == "Landed") st.AddImpact(e.ProgramTime, (float)(e.Values.TryGetValue("impactSpeed", out var v) ? v / 15.0 : 0.4));
                         else if (e.Type == "ObstacleHit") st.AddImpact(e.ProgramTime, 0.35f);
                         else if (e.Type == "Rollover") st.AddImpact(e.ProgramTime - 0.8, 0.8f);
+                        else if (e.Type == "WallCrash") st.AddCrash(e.ProgramTime, (float)(e.Values.TryGetValue("speedKmh", out var kmh) ? kmh / 110.0 : 0.7), true);
                     }
+                    foreach (var a in attempts.Where(x => x.DamagePercent >= 20 && !x.ImpactSpeedKmh.HasValue && x.LandingProgramTime.HasValue))
+                        st.AddCrash(a.LandingProgramTime.Value, (float)(a.DamagePercent.Value / 80.0), a.GlassBroken);
                     foreach (var s in segments.Where(x => x.Kind == SegmentKind.Replay)) st.AddWind(s.Start, s.End, 0.05f);
                 }
                 var ordered = lineList.OrderBy(l => l.Start).ToList();
@@ -275,11 +301,12 @@ namespace Mylti
                     double next = i + 1 < ordered.Count ? ordered[i + 1].Start : duration;
                     st.AddVoice(c, ordered[i].Start, 1f, Math.Max(0.5, next - ordered[i].Start - 0.05));
                 }
+                if (musicSamples != null) st.AddMusic(musicSamples, musicGain);
                 st.Render(mixPath, duration);
             });
             while (!mixTask.IsCompleted) yield return null;
             if (mixTask.IsFaulted) { Set(aN, StepState.Failed, mixTask.Exception.GetBaseException().Message); yield break; }
-            Set(aN, StepState.Done, sfx ? "Lời bình + tiếng động cơ/gió/va chạm tổng hợp" : "Chỉ lời bình");
+            Set(aN, StepState.Done, (sfx ? "Lời bình + tiếng động cơ/gió/va chạm tổng hợp" : "Chỉ lời bình") + (musicName != null ? " + nhạc: " + musicName : ""));
 
             // ---------------------------------------------------- 7. final mp4
             const string fN = "7. Xuất MP4 cuối";
