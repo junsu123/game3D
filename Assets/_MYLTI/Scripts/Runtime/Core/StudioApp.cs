@@ -33,6 +33,8 @@ namespace Mylti
         public BuiltInRecorder Recorder { get; private set; }
         public EpisodeProducer Producer { get; private set; }
         public EpisodeLog Episodes { get; private set; }
+        public SceneLook Look { get; private set; }
+        public VfxDirector Vfx { get; private set; }
 
         // data
         public string DataRoot { get; private set; }
@@ -129,6 +131,11 @@ namespace Mylti
             Producer.Episodes = Episodes;
             gameObject.AddComponent<StudioUI>();
 
+            Look = gameObject.AddComponent<SceneLook>();
+            Look.Cam = Cam.GetComponent<Camera>();
+            Vfx = new GameObject("VFX").AddComponent<VfxDirector>();
+            Vfx.Session = Session;
+            Vfx.Attach(Log);
             ApplyQuality(Settings.Quality);
             VehicleAudio.MasterVolume = Settings.EnableAudio ? 0.8f : 0f;
         }
@@ -153,7 +160,7 @@ namespace Mylti
 
         void EnsureLighting()
         {
-            if (FindAnyObjectByType<Light>() == null)
+            if (FindAnyObjectByType<Light>() == null) // SceneLook then tunes sun, ambient, fog and post-processing
             {
                 var sun = new GameObject("Sun").AddComponent<Light>();
                 sun.type = LightType.Directional;
@@ -169,6 +176,7 @@ namespace Mylti
             int idx = Array.FindIndex(names, n => n.Equals(level, StringComparison.OrdinalIgnoreCase));
             if (idx < 0) idx = level == "Low" ? 0 : level == "Medium" ? Math.Min(1, names.Length - 1) : names.Length - 1;
             if (idx >= 0 && idx < names.Length) QualitySettings.SetQualityLevel(idx, true);
+            if (Look != null) Look.Apply(level);
         }
 
         readonly System.Collections.Concurrent.ConcurrentQueue<string> pendingMessages = new System.Collections.Concurrent.ConcurrentQueue<string>();

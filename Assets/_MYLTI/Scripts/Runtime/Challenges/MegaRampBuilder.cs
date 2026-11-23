@@ -66,10 +66,10 @@ namespace Mylti
             ctx.RampWidth = laneCount * LaneSpacing + 6f;
             ctx.RampStartZ = spec.RunwayLength;
 
-            var asphalt = MaterialFactory.Get(new Color(0.18f, 0.19f, 0.21f), 0.25f);
-            var grass = MaterialFactory.Get(new Color(0.30f, 0.52f, 0.24f), 0.1f);
-            var concrete = MaterialFactory.Get(new Color(0.72f, 0.70f, 0.66f), 0.2f);
-            var rampMat = MaterialFactory.Get(new Color(0.86f, 0.55f, 0.20f), 0.3f);
+            var asphalt = MaterialFactory.Get(new Color(0.18f, 0.19f, 0.21f), 0.25f); // tinted per strip in RunwayStrip
+            var grass = MaterialFactory.Get(new Color(0.30f, 0.52f, 0.24f), 0.1f);   // replaced by textured grass in Ground
+            var concrete = MaterialFactory.Textured(TextureFactory.Concrete(), new Vector2(2f, 2f), 0.25f);
+            var rampMat = MaterialFactory.Textured(TextureFactory.RampDeck(), Vector2.one, 0.35f);
             var white = MaterialFactory.Get(Color.white, 0.4f);
             var water = MaterialFactory.Get(new Color(0.12f, 0.35f, 0.62f), 0.9f);
 
@@ -129,7 +129,11 @@ namespace Mylti
             mc.sharedMesh = mesh;
             kicker.AddComponent<SurfaceTag>().Kind = SurfaceKind.Ramp;
             // lip stripe + side rails (visual only, rails would trap vehicles)
-            MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, spec.KickerHeight + 0.02f, lipZ - 0.6f), new Vector3(ctx.RampWidth, 0.05f, 1.2f), white, "LipStripe");
+            MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, spec.KickerHeight + 0.02f, lipZ - 0.6f), new Vector3(ctx.RampWidth, 0.05f, 1.2f),
+                MaterialFactory.Textured(TextureFactory.Hazard(), new Vector2(ctx.RampWidth / 2f, 1f), 0.4f), "LipStripe");
+            // landing zone: worn dirt strip so impacts read clearly on camera
+            MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, 0.008f, lipZ + 135f), new Vector3(ctx.RampWidth + 26f, 0.01f, 270f),
+                MaterialFactory.Textured(TextureFactory.Dirt(), new Vector2((ctx.RampWidth + 26f) / 10f, 27f), 0.12f), "LandingDirt");
             for (int s = -1; s <= 1; s += 2)
             {
                 float x = s * (ctx.RampWidth * 0.5f + 0.4f);
@@ -182,18 +186,88 @@ namespace Mylti
             }
 
             Scenery(ctx, rng, concrete);
+            Dressing(ctx, rng);
             Current = ctx;
             return ctx;
         }
 
+        /// <summary>Crowd, flags, tyre walls, light towers and distant hills — cheap shapes that make the arena feel alive.</summary>
+        void Dressing(MapContext ctx, System.Random rng)
+        {
+            float side = ctx.RampWidth * 0.5f;
+            Color[] shirt = { new Color(0.9f, 0.2f, 0.2f), new Color(0.2f, 0.45f, 0.9f), new Color(0.95f, 0.85f, 0.2f), new Color(0.95f, 0.95f, 0.95f), new Color(0.2f, 0.75f, 0.35f), new Color(0.15f, 0.15f, 0.18f) };
+            var shirtMats = new Material[shirt.Length];
+            for (int i = 0; i < shirt.Length; i++) shirtMats[i] = MaterialFactory.Get(shirt[i], 0.2f);
+            // spectators on the grandstands (two tiers)
+            for (int sgn = -1; sgn <= 1; sgn += 2)
+            {
+                float x0 = sgn * (side + 42f);
+                for (int g = 0; g < 4; g++)
+                {
+                    float zc = 40f + g * 50f;
+                    if (ctx.HasBridge && zc > ctx.BridgeStartZ - 10 && zc < ctx.BridgeEndZ + 10) continue;
+                    for (int n = 0; n < 60; n++)
+                    {
+                        float z = zc - 14f + (float)rng.NextDouble() * 28f;
+                        int tier = rng.Next(2);
+                        float x = x0 - sgn * (2.5f - tier * 2.5f) + (float)(rng.NextDouble() - 0.5) * 1.5f;
+                        float y = 4.6f + tier * 1.6f;
+                        MaterialFactory.Visual(PrimitiveType.Capsule, root.transform, new Vector3(x, y, z), new Vector3(0.55f, 0.8f, 0.55f), shirtMats[rng.Next(shirtMats.Length)], "Fan");
+                    }
+                }
+            }
+            // flags along the runway
+            var pole = MaterialFactory.Get(new Color(0.8f, 0.8f, 0.82f), 0.8f, 0.9f);
+            for (float z = 20f; z < ctx.RampStartZ - 10f; z += 30f)
+            {
+                if (ctx.HasBridge && z > ctx.BridgeStartZ - 4 && z < ctx.BridgeEndZ + 4) continue;
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                {
+                    float x = sgn * (side + 4f);
+                    MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(x, 3f, z), new Vector3(0.12f, 3f, 0.12f), pole, "FlagPole");
+                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(x + sgn * 0.0f, 5.2f, z + 0.9f), new Vector3(0.04f, 1.2f, 1.8f), shirtMats[rng.Next(shirtMats.Length - 1)], "Flag");
+                }
+            }
+            // tyre walls lining the landing zone
+            var tyreMat = MaterialFactory.Get(new Color(0.07f, 0.07f, 0.07f), 0.2f);
+            for (float z = ctx.LipZ + 20f; z < ctx.LipZ + 260f; z += 2.2f)
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                {
+                    MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(sgn * (side + 13.5f), 0.25f, z), new Vector3(1.2f, 0.25f, 1.2f), tyreMat, "Tyres");
+                    MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(sgn * (side + 13.5f), 0.75f, z), new Vector3(1.2f, 0.25f, 1.2f), tyreMat, "Tyres");
+                }
+            // light towers
+            var lamp = MaterialFactory.Get(new Color(1f, 0.97f, 0.88f), 0.9f, 0f, true);
+            for (int i = 0; i < 4; i++)
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                {
+                    float z = ctx.RampStartZ - 120f + i * 110f;
+                    float x = sgn * (side + 60f);
+                    MaterialFactory.Visual(PrimitiveType.Cylinder, root.transform, new Vector3(x, 14f, z), new Vector3(0.6f, 14f, 0.6f), pole, "Tower");
+                    MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(x, 28.5f, z), new Vector3(3.5f, 1.4f, 0.5f), lamp, "Floodlight");
+                }
+            // distant hills (beyond the field, softened by fog)
+            var hill = MaterialFactory.Textured(TextureFactory.Rock(), new Vector2(3f, 3f), 0.05f, new Color(0.75f, 0.85f, 0.75f));
+            for (int i = 0; i < 18; i++)
+            {
+                float a = (float)i / 18f * Mathf.PI * 2f + (float)rng.NextDouble() * 0.2f;
+                float rad = 650f + (float)rng.NextDouble() * 250f;
+                float sz = 180f + (float)rng.NextDouble() * 220f;
+                var c = new Vector3(Mathf.Cos(a) * rad, -sz * 0.35f, ctx.LipZ + Mathf.Sin(a) * rad);
+                MaterialFactory.Visual(PrimitiveType.Sphere, root.transform, c, new Vector3(sz, sz * (0.5f + (float)rng.NextDouble() * 0.4f), sz), hill, "Hill");
+            }
+        }
+
         void Ground(float z0, float z1, Material mat)
         {
+            mat = MaterialFactory.Textured(TextureFactory.Grass(), new Vector2(300f / 14f, (z1 - z0) / 14f), 0.08f);
             var g = MaterialFactory.Solid(PrimitiveType.Cube, root.transform, new Vector3(0, -0.5f, (z0 + z1) * 0.5f), new Vector3(300f, 1f, z1 - z0), mat, "Ground");
             g.AddComponent<SurfaceTag>().Kind = SurfaceKind.Ground;
         }
 
         void RunwayStrip(float z0, float z1, float width, Material mat)
         {
+            mat = MaterialFactory.Textured(TextureFactory.Asphalt(), new Vector2(width / 6f, (z1 - z0) / 6f), 0.3f);
             MaterialFactory.Visual(PrimitiveType.Cube, root.transform, new Vector3(0, 0.005f, (z0 + z1) * 0.5f), new Vector3(width, 0.01f, z1 - z0), mat, "Runway");
         }
 
@@ -252,7 +326,7 @@ namespace Mylti
 
         void CrateWall(MapContext ctx, float z)
         {
-            var wood = MaterialFactory.Get(new Color(0.62f, 0.43f, 0.23f), 0.2f);
+            var wood = MaterialFactory.Textured(TextureFactory.RampDeck(), new Vector2(1f, 0.3f), 0.2f, new Color(0.75f, 0.55f, 0.35f));
             float half = ctx.RampWidth * 0.5f + 6f;
             int k = 0;
             for (int row = 0; row < 3; row++)

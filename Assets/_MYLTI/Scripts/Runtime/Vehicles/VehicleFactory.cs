@@ -24,55 +24,34 @@ namespace Mylti
             rb.linearDamping = 0.02f;
             rb.angularDamping = 0.05f;
 
-            var paint = MaterialFactory.Hex(entrant.ColorHex ?? def.DefaultColorHex, 0.75f, 0.35f);
-            var dark = MaterialFactory.Get(new Color(0.08f, 0.08f, 0.09f), 0.6f);
-            var glass = MaterialFactory.Get(new Color(0.15f, 0.22f, 0.3f), 0.95f, 0.1f);
-            var chrome = MaterialFactory.Get(new Color(0.8f, 0.8f, 0.82f), 0.9f, 0.9f);
-            var lightMat = MaterialFactory.Get(new Color(1f, 0.95f, 0.75f), 0.8f, 0f, true);
-            var tail = MaterialFactory.Get(new Color(0.9f, 0.05f, 0.05f), 0.8f, 0f, true);
+            var paint = MaterialFactory.Hex(entrant.ColorHex ?? def.DefaultColorHex, 0.82f, 0.45f); // glossy metallic paint
 
             float W = def.Width, H = def.Height, Lg = def.Length, r = def.WheelRadius;
             var body = new GameObject("Body").transform;
             body.SetParent(root.transform, false);
 
+            // Physics shape: simple boxes (stable, cheap). Visual shape: smooth lofted body built on top.
             float bottom, lowerH;
             switch (def.BodyStyle)
             {
                 case "truck":
                     bottom = r * 1.05f; lowerH = 0.55f;
-                    Box(body, "Frame", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W * 0.92f, lowerH, Lg), dark, true);
-                    float cabL = 2.3f;
-                    Box(body, "Cab", new Vector3(0, bottom + lowerH + 0.85f, Lg * 0.5f - cabL * 0.5f), new Vector3(W, 1.7f, cabL), paint, true);
-                    Box(body, "Windshield", new Vector3(0, bottom + lowerH + 1.25f, Lg * 0.5f + 0.01f), new Vector3(W * 0.85f, 0.7f, 0.05f), glass, false);
-                    Box(body, "Cargo", new Vector3(0, bottom + lowerH + 1.0f, -cabL * 0.5f - 0.1f), new Vector3(W, 2.0f, Lg - cabL - 0.2f), MaterialFactory.Get(new Color(0.85f, 0.86f, 0.88f), 0.4f), true);
-                    Box(body, "CargoStripe", new Vector3(0, bottom + lowerH + 1.0f, -cabL * 0.5f - 0.1f), new Vector3(W + 0.02f, 0.35f, Lg - cabL - 0.4f), paint, false);
-                    Box(body, "Grille", new Vector3(0, bottom + lowerH + 0.3f, Lg * 0.5f + 0.01f), new Vector3(W * 0.7f, 0.5f, 0.05f), chrome, false);
+                    Box(body, "Col_Frame", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W * 0.92f, lowerH, Lg), paint, true);
+                    Box(body, "Col_Cab", new Vector3(0, bottom + lowerH + 0.85f, Lg * 0.5f - 1.15f), new Vector3(W, 1.7f, 2.3f), paint, true);
+                    Box(body, "Col_Cargo", new Vector3(0, bottom + lowerH + 1.0f, -1.25f), new Vector3(W, 2.0f, Lg - 2.5f), paint, true);
                     break;
                 case "suv":
                     bottom = r * 0.95f; lowerH = 0.85f;
-                    Box(body, "Lower", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W, lowerH, Lg), paint, true);
-                    Box(body, "Cabin", new Vector3(0, bottom + lowerH + 0.33f, -Lg * 0.06f), new Vector3(W * 0.92f, 0.66f, Lg * 0.62f), paint, true);
-                    Box(body, "Glass", new Vector3(0, bottom + lowerH + 0.36f, -Lg * 0.06f), new Vector3(W * 0.93f, 0.46f, Lg * 0.6f), glass, false);
-                    Box(body, "RoofRack", new Vector3(0, bottom + lowerH + 0.7f, -Lg * 0.06f), new Vector3(W * 0.8f, 0.06f, Lg * 0.5f), dark, false);
-                    Box(body, "Bumper", new Vector3(0, bottom + 0.15f, Lg * 0.5f + 0.05f), new Vector3(W * 0.95f, 0.3f, 0.12f), dark, false);
+                    Box(body, "Col_Lower", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W, lowerH, Lg), paint, true);
+                    Box(body, "Col_Cabin", new Vector3(0, bottom + lowerH + 0.33f, -Lg * 0.06f), new Vector3(W * 0.92f, 0.66f, Lg * 0.62f), paint, true);
                     break;
-                default: // sport
+                default:
                     bottom = r * 0.75f; lowerH = 0.5f;
-                    Box(body, "Lower", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W, lowerH, Lg), paint, true);
-                    Box(body, "Cabin", new Vector3(0, bottom + lowerH + 0.2f, -Lg * 0.08f), new Vector3(W * 0.78f, 0.42f, Lg * 0.42f), paint, true);
-                    Box(body, "Glass", new Vector3(0, bottom + lowerH + 0.22f, -Lg * 0.08f), new Vector3(W * 0.79f, 0.3f, Lg * 0.4f), glass, false);
-                    Box(body, "Spoiler", new Vector3(0, bottom + lowerH + 0.25f, -Lg * 0.47f), new Vector3(W * 0.9f, 0.06f, 0.35f), dark, false);
-                    Box(body, "SpoilerPostL", new Vector3(-W * 0.3f, bottom + lowerH + 0.11f, -Lg * 0.46f), new Vector3(0.06f, 0.22f, 0.1f), dark, false);
-                    Box(body, "SpoilerPostR", new Vector3(W * 0.3f, bottom + lowerH + 0.11f, -Lg * 0.46f), new Vector3(0.06f, 0.22f, 0.1f), dark, false);
-                    Box(body, "Splitter", new Vector3(0, bottom + 0.03f, Lg * 0.5f), new Vector3(W * 0.95f, 0.05f, 0.25f), dark, false);
+                    Box(body, "Col_Lower", new Vector3(0, bottom + lowerH * 0.5f, 0), new Vector3(W, lowerH, Lg), paint, true);
+                    Box(body, "Col_Cabin", new Vector3(0, bottom + lowerH + 0.2f, -Lg * 0.08f), new Vector3(W * 0.78f, 0.42f, Lg * 0.42f), paint, true);
                     break;
             }
-            // lights
-            float ly = bottom + lowerH * 0.65f;
-            Box(body, "HeadL", new Vector3(-W * 0.33f, ly, Lg * 0.5f + 0.02f), new Vector3(0.35f, 0.12f, 0.04f), lightMat, false);
-            Box(body, "HeadR", new Vector3(W * 0.33f, ly, Lg * 0.5f + 0.02f), new Vector3(0.35f, 0.12f, 0.04f), lightMat, false);
-            Box(body, "TailL", new Vector3(-W * 0.36f, ly, -Lg * 0.5f - 0.02f), new Vector3(0.3f, 0.1f, 0.04f), tail, false);
-            Box(body, "TailR", new Vector3(W * 0.36f, ly, -Lg * 0.5f - 0.02f), new Vector3(0.3f, 0.1f, 0.04f), tail, false);
+            CarBodyBuilder.Build(def, body, def.BodyStyle == "truck" ? bottom + 0.1f : bottom, paint);
 
             rb.centerOfMass = new Vector3(0, bottom + 0.3f + def.CenterOfMassY, 0);
 
@@ -111,10 +90,7 @@ namespace Mylti
                 var pivot = new GameObject("WheelVisual_" + names[i]).transform;
                 pivot.SetParent(root.transform, false);
                 pivot.localPosition = pos[i] + Vector3.up * r;
-                var tyre = MaterialFactory.Visual(PrimitiveType.Cylinder, pivot, Vector3.zero, new Vector3(r * 2f, 0.16f, r * 2f), dark, "Tyre");
-                tyre.transform.localRotation = Quaternion.Euler(0, 0, 90f);
-                var rim = MaterialFactory.Visual(PrimitiveType.Cylinder, pivot, new Vector3(Mathf.Sign(pos[i].x) * 0.02f, 0, 0), new Vector3(r * 1.2f, 0.17f, r * 1.2f), chrome, "Rim");
-                rim.transform.localRotation = Quaternion.Euler(0, 0, 90f);
+                CarBodyBuilder.Wheel(pivot, r, pos[i].x < 0);
                 vc.WheelVisuals[i] = pivot;
             }
             vc.Wheels[0].ConfigureVehicleSubsteps(5f, 12, 15);
@@ -133,8 +109,7 @@ namespace Mylti
             if (collider)
             {
                 var go = MaterialFactory.Solid(PrimitiveType.Cube, parent, pos, size, mat, name);
-                var bc = go.GetComponent<BoxCollider>();
-                if (bc != null) bc.sharedMaterial = null;
+                go.GetComponent<Renderer>().enabled = false; // collision proxy only
             }
             else MaterialFactory.Visual(PrimitiveType.Cube, parent, pos, size, mat, name);
         }

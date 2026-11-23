@@ -26,6 +26,16 @@ Tab đầu tiên **▶ Auto Episode** → bấm **AUTO EPISODE**:
 
 Lần đầu nên bấm **Quay thử 3 giây** để kiểm tra hình không bị lộn ngược (nếu ngược, đổi ô *Lật dọc*).
 
+## Đồ hoạ
+
+- **Xe**: thân xe bo tròn dựng thủ tục (loft các mặt cắt superellipse) — xe thể thao có kính bong bóng, sọc đua, cánh gió; SUV có giá nóc; xe tải có cabin + thùng hàng; mâm 5 chấu, đèn phát sáng. Va chạm vẫn dùng hộp đơn giản (ổn định).
+- **Sân**: texture thủ tục (cỏ cắt sọc, nhựa đường, sàn dốc ván gỗ, bê tông, đất bãi đáp, vạch cảnh báo), khán giả trên khán đài, cờ, tường lốp, cột đèn, đồi xa.
+- **Ánh sáng & hậu kỳ (URP)**: nắng ấm, ánh sáng môi trường 3 tầng, sương xa; tonemapping ACES, bloom cho đèn, chỉnh màu, vignette nhẹ, motion blur, khử răng cưa SMAA, bóng đổ xa 300–450 m (tự trả lại cài đặt URP khi thoát).
+- **Hiệu ứng theo sự kiện thật**: bụi khi tiếp đất/lật, tia lửa + mảnh vỡ khi va chướng ngại.
+- Chất lượng Low / Medium / High ở tab Camera.
+
+**Không dùng nhãn hiệu xe thật** (tên, logo, kiểu dáng đặc trưng): xe là thiết kế chung chung tự tạo; `ClaimChecker` chặn tên hãng trong tiêu đề/mô tả/lời bình.
+
 ## 1. Cài đặt trên Windows 11 (3 bước)
 
 1. Unity Hub ▸ **New project** ▸ template **Universal 3D** ▸ Create.

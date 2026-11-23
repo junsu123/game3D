@@ -40,6 +40,22 @@ namespace Mylti
                 m.SetColor("_EmissionColor", c * 2f);
                 m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             }
+            m.enableInstancing = true;
+            cache[key] = m;
+            return m;
+        }
+
+        /// <summary>Textured lit material. tiling = repeats across a primitive face (UV 0..1) or per 6 m on generated meshes.</summary>
+        public static Material Textured(Texture2D tex, Vector2 tiling, float smoothness = 0.2f, Color? tint = null, float metallic = 0f)
+        {
+            string key = "tex_" + tex.name + tiling.x.ToString("0.0") + "x" + tiling.y.ToString("0.0") + smoothness.ToString("0.00") + (tint.HasValue ? ColorUtility.ToHtmlStringRGBA(tint.Value) : "");
+            if (cache.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(Base) { name = "MYLTI_" + key, color = tint ?? Color.white, mainTexture = tex, mainTextureScale = tiling };
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", tint ?? Color.white);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
+            if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", smoothness);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
+            m.enableInstancing = true;
             cache[key] = m;
             return m;
         }

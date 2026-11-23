@@ -7,15 +7,26 @@ namespace Mylti
     public sealed class MeshBuilder
     {
         readonly List<Vector3> verts = new List<Vector3>();
+        readonly List<Vector2> uvs = new List<Vector2>();
         readonly List<int> tris = new List<int>();
 
-        /// <summary>Adds a quad and flips winding so the face points along 'outward'.</summary>
-        public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 outward)
+        /// <summary>Adds a quad and flips winding so the face points along 'outward'. UVs default to world-planar mapping.</summary>
+        public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 outward,
+            Vector2? ua = null, Vector2? ub = null, Vector2? uc = null, Vector2? ud = null)
         {
-            Vector3 n = Vector3.Cross(b - a, c - a);
-            if (Vector3.Dot(n, outward) < 0) { var t = b; b = d; d = t; }
+            Vector2 Planar(Vector3 p)
+            {
+                Vector3 n = outward;
+                if (Mathf.Abs(n.x) > 0.7f) return new Vector2(p.z, p.y) / 6f;
+                if (Mathf.Abs(n.z) > 0.7f) return new Vector2(p.x, p.y) / 6f;
+                return new Vector2(p.x, p.z) / 6f;
+            }
+            Vector2 A = ua ?? Planar(a), B = ub ?? Planar(b), C = uc ?? Planar(c), D = ud ?? Planar(d);
+            Vector3 nrm = Vector3.Cross(b - a, c - a);
+            if (Vector3.Dot(nrm, outward) < 0) { var t = b; b = d; d = t; var tu = B; B = D; D = tu; }
             int i = verts.Count;
             verts.Add(a); verts.Add(b); verts.Add(c); verts.Add(d);
+            uvs.Add(A); uvs.Add(B); uvs.Add(C); uvs.Add(D);
             tris.Add(i); tris.Add(i + 1); tris.Add(i + 2);
             tris.Add(i); tris.Add(i + 2); tris.Add(i + 3);
         }
@@ -25,6 +36,7 @@ namespace Mylti
             var m = new Mesh { name = name };
             if (verts.Count > 65000) m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             m.SetVertices(verts);
+            m.SetUVs(0, uvs);
             m.SetTriangles(tris, 0);
             m.RecalculateNormals();
             m.RecalculateBounds();
@@ -39,14 +51,18 @@ namespace Mylti
         {
             var mb = new MeshBuilder();
             float hx = width * 0.5f;
+            float along = 0f; // distance along the deck → plank texture runs across the driving direction
             for (int i = 0; i < profile.Count - 1; i++)
             {
                 Vector2 p = profile[i], q = profile[i + 1];
+                float seg = Vector2.Distance(p, q);
+                float v0 = along / 6f, v1 = (along + seg) / 6f;
+                along += seg;
                 var a = new Vector3(-hx, p.y, p.x); var b = new Vector3(hx, p.y, p.x);
                 var c = new Vector3(hx, q.y, q.x); var d = new Vector3(-hx, q.y, q.x);
                 Vector3 slopeUp = Vector3.Cross(Vector3.right, new Vector3(0, q.y - p.y, q.x - p.x)).normalized;
                 if (slopeUp.y < 0) slopeUp = -slopeUp;
-                mb.Quad(a, b, c, d, slopeUp);
+                mb.Quad(a, b, c, d, slopeUp, new Vector2(0, v0), new Vector2(width / 6f, v0), new Vector2(width / 6f, v1), new Vector2(0, v1));
                 // side walls
                 mb.Quad(new Vector3(-hx, 0, p.x), new Vector3(-hx, p.y, p.x), new Vector3(-hx, q.y, q.x), new Vector3(-hx, 0, q.x), Vector3.left);
                 mb.Quad(new Vector3(hx, 0, p.x), new Vector3(hx, p.y, p.x), new Vector3(hx, q.y, q.x), new Vector3(hx, 0, q.x), Vector3.right);
