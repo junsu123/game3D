@@ -32,6 +32,7 @@ namespace Mylti
         public FfmpegTool Ffmpeg { get; private set; }
         public BuiltInRecorder Recorder { get; private set; }
         public EpisodeProducer Producer { get; private set; }
+        public Autopilot Autopilot { get; private set; }
         public EpisodeLog Episodes { get; private set; }
         public SceneLook Look { get; private set; }
         public VfxDirector Vfx { get; private set; }
@@ -131,6 +132,8 @@ namespace Mylti
             Producer.App = this;
             Producer.Ffmpeg = Ffmpeg;
             Producer.Episodes = Episodes;
+            Autopilot = gameObject.AddComponent<Autopilot>();
+            Autopilot.Init(this);
             gameObject.AddComponent<StudioUI>();
 
             Look = gameObject.AddComponent<SceneLook>();

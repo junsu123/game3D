@@ -3,9 +3,9 @@
 Công cụ mô phỏng thử thách xe 3D để **sản xuất video YouTube 10:00**: chọn concept → lập kế hoạch 5 vòng + chung kết → chạy & quay một take liền mạch → xác minh tệp video → sinh **YouTube Content Pack** (5 tiêu đề, mô tả SEO, 3 cặp title/thumbnail prompt) chỉ từ dữ kiện thật → Quality Gate.
 
 > **Trạng thái kiểm thử (trung thực):**
-> - ✅ Toàn bộ 57 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder.
-> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **35/35 test** chạy đạt bằng .NET 8 (thêm: lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
-> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
+> - ✅ Toàn bộ 63 tệp mã C# trong `Scripts/` **đã biên dịch không lỗi** với bộ stub API Unity 6.3 (chữ ký đối chiếu mã nguồn tham chiếu Unity 6000.3), cả hai chế độ Input System mới và Input Manager cũ, kèm Unity Recorder.
+> - ✅ Phần logic thuần (`Scripts/Domain`) biên dịch cho .NET Standard 2.1 và **46/46 test** chạy đạt bằng .NET 8 (thêm: lời bình, chống spoiler, parse kịch bản Claude, xoay vòng không trùng, trộn âm thanh, thẻ chữ/hook, chuẩn hoá chữ cho Kokoro, giờ mùa hè Mỹ/EU, chọn giờ đăng, hàng đợi, JSON tải lên YouTube, PKCE, kiểm tra bản dịch): planner 600 s, chấm điểm, Content Pack, chống bịa, Quality Gate, novelty, đọc thời lượng MP4/MKV, preset hỏng.
+> - ❌ **Chưa chạy trong Unity Editor, chưa build .exe, chưa quay video thật, chưa gọi thử Claude API / TTS thật, chưa chạy Kokoro trên Windows, chưa tải video thật lên YouTube** (môi trường làm việc là Linux, không có Unity). Riêng bộ lọc chữ FFmpeg đã được chạy thật với FFmpeg 6.1 trên video thử và kiểm tra bằng mắt. Các hằng số vật lý (lò xo, dốc, AI) là giá trị khởi điểm hợp lý — cần bấm Play và tinh chỉnh theo checklist ở `docs/TEST_CHECKLIST.md`.
 
 ---
 
@@ -41,6 +41,19 @@ Kokoro có 14 giọng tiếng Anh để chọn trong app (af_heart chất lượ
 **Chi phí & điều kiện:** Claude API tính phí theo token (tách biệt gói Claude.ai) — lấy key tại console.anthropic.com. Giọng Windows và bộ viết offline thì miễn phí hoàn toàn. Trước khi đăng hãy xem lại video: app không thể tự đảm bảo nội dung hợp chính sách YouTube.
 
 Lần đầu nên bấm **Quay thử 3 giây** để kiểm tra hình không bị lộn ngược (nếu ngược, đổi ô *Lật dọc*).
+
+## 📅 Lịch & tự đăng YouTube (Mỹ + châu Âu)
+
+Tab **📅 Lịch & Đăng**:
+1. **Kết nối kênh** bằng *Đăng nhập Google* (OAuth). App **không cần và không nhận mật khẩu** của bạn; quyền chỉ là tải video và phụ đề, có thể thu hồi bất cứ lúc nào. Bạn cần tự tạo một OAuth Client loại *Desktop app* trong Google Cloud (hướng dẫn từng bước có trong app, khoảng 10 phút, làm một lần).
+2. **Lịch đăng** chọn giờ theo múi giờ khán giả và tự tính giờ mùa hè. Mặc định 3 video/tuần. Ngày thường ≈ 12:30 New York / 18:30 Trung Âu; cuối tuần ≈ 10:30 New York (giờ mùa đông). Tỉ trọng 17 thị trường chỉnh được; nghiên cứu và nguồn ở `docs/MARKET_RESEARCH.md`.
+3. **Châu Âu**: Claude dịch tiêu đề và mô tả sang tiếng Đức, Pháp, Tây Ban Nha, Ý, Hà Lan, Ba Lan, Thuỵ Điển, Đan Mạch, Phần Lan. Bản dịch nào đổi số liệu hoặc mốc chương thì bị bỏ. Bạn nên bật thêm *Automatic dubbing* trong YouTube Studio.
+4. **Autopilot**:
+   - Luôn làm sẵn N tập. Mỗi tập được tải lên ở chế độ **Riêng tư kèm giờ công khai hẹn sẵn**, cùng thumbnail và phụ đề tiếng Anh. YouTube tự công khai đúng giờ.
+   - Chỉ đăng tập có video `CaptureVerified` và qua Quality Gate. Tập lỗi bị bỏ qua và ghi lý do. Tải lên thất bại thì tự thử lại; hết hạn mức thì đợi hôm sau.
+   - Bản .exe có thể tạo lịch **Windows Task Scheduler**: mỗi ngày app tự mở (có thể đánh thức máy), làm và tải phần còn thiếu, rồi tự đóng.
+   - Máy phải bật và đã đăng nhập Windows lúc chạy.
+5. Lưu ý chính sách: YouTube không cho kiếm tiền với nội dung *sản xuất hàng loạt hoặc lặp lại*. App có cơ chế chống trùng nhưng không thể đảm bảo kênh được duyệt kiếm tiền. Không nên đăng quá dày; nên xem lại các tập đầu.
 
 ## Đồ hoạ
 
